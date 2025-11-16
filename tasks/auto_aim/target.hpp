@@ -14,6 +14,7 @@
 namespace auto_aim
 {
 
+// 瞄准的目标
 class Target
 {
 public:

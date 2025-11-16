@@ -10,6 +10,7 @@ using namespace std::chrono_literals;
 
 namespace auto_aim
 {
+// planner 类的实现
 Planner::Planner(const std::string & config_path)
 {
   auto yaml = tools::load(config_path);
@@ -24,14 +25,18 @@ Planner::Planner(const std::string & config_path)
   setup_pitch_solver(config_path);
 }
 
+
+// 规划函数的实现
 Plan Planner::plan(Target target, double bullet_speed)
 {
   // 0. Check bullet speed
+  // 检查弹速
   if (bullet_speed < 10 || bullet_speed > 25) {
     bullet_speed = 22;
   }
 
   // 1. Predict fly_time
+  // 预测飞行时间
   Eigen::Vector3d xyz;
   auto min_dist = 1e10;
   for (auto & xyza : target.armor_xyza_list()) {
@@ -56,6 +61,7 @@ Plan Planner::plan(Target target, double bullet_speed)
   }
 
   // 3. Solve yaw
+  // 解算yaw
   Eigen::VectorXd x0(2);
   x0 << traj(0, 0), traj(1, 0);
   tiny_set_x0(yaw_solver_, x0);
@@ -64,6 +70,7 @@ Plan Planner::plan(Target target, double bullet_speed)
   tiny_solve(yaw_solver_);
 
   // 4. Solve pitch
+  // 解算pitch
   x0 << traj(2, 0), traj(3, 0);
   tiny_set_x0(pitch_solver_, x0);
 
@@ -96,7 +103,8 @@ Plan Planner::plan(Target target, double bullet_speed)
 Plan Planner::plan(std::optional<Target> target, double bullet_speed)
 {
   if (!target.has_value()) return {false};
-
+  
+  //
   double delay_time =
     std::abs(target->ekf_x()[7]) > decision_speed_ ? high_speed_delay_time_ : low_speed_delay_time_;
 
@@ -107,6 +115,7 @@ Plan Planner::plan(std::optional<Target> target, double bullet_speed)
   return plan(*target, bullet_speed);
 }
 
+// 设置 yaw 求解器
 void Planner::setup_yaw_solver(const std::string & config_path)
 {
   auto yaml = tools::load(config_path);
@@ -130,6 +139,7 @@ void Planner::setup_yaw_solver(const std::string & config_path)
   yaw_solver_->settings->max_iter = 10;
 }
 
+// 设置 pitch 求解器
 void Planner::setup_pitch_solver(const std::string & config_path)
 {
   auto yaml = tools::load(config_path);
@@ -153,6 +163,7 @@ void Planner::setup_pitch_solver(const std::string & config_path)
   pitch_solver_->settings->max_iter = 10;
 }
 
+// 计算瞄准角度
 Eigen::Matrix<double, 2, 1> Planner::aim(const Target & target, double bullet_speed)
 {
   Eigen::Vector3d xyz;
@@ -176,10 +187,13 @@ Eigen::Matrix<double, 2, 1> Planner::aim(const Target & target, double bullet_sp
   return {tools::limit_rad(azim + yaw_offset_), -bullet_traj.pitch - pitch_offset_};
 }
 
+// 获取目标轨迹
+// 貌似是预测未来一段时间内目标的yaw和pitch变化情况
+// 分三个区间来解决问题
 Trajectory Planner::get_trajectory(Target & target, double yaw0, double bullet_speed)
 {
   Trajectory traj;
-
+  // -0.01*(51~0) 到 0.01*50 共100个点
   target.predict(-DT * (HALF_HORIZON + 1));
   auto yaw_pitch_last = aim(target, bullet_speed);
 

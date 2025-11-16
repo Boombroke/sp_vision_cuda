@@ -11,6 +11,7 @@ const std::string keys =
   "{config-path c  | configs/calibration.yaml | yaml配置文件路径 }"
   "{@input-folder  | assets/img_with_q        | 输入文件夹路径   }";
 
+// 生成标定板三维点坐标 
 std::vector<cv::Point3f> centers_3d(const cv::Size & pattern_size, const float center_distance)
 {
   std::vector<cv::Point3f> centers_3d;

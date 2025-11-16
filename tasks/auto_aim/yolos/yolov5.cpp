@@ -10,6 +10,7 @@
 
 namespace auto_aim
 {
+// yolo v5 构造函数
 YOLOV5::YOLOV5(const std::string & config_path, bool debug)
 : debug_(debug), detector_(config_path, false)
 {
@@ -54,6 +55,7 @@ YOLOV5::YOLOV5(const std::string & config_path, bool debug)
     model, device_, ov::hint::performance_mode(ov::hint::PerformanceMode::LATENCY));
 }
 
+// 目标检测函数
 std::list<Armor> YOLOV5::detect(const cv::Mat & raw_img, int frame_count)
 {
   if (raw_img.empty()) {
@@ -61,6 +63,7 @@ std::list<Armor> YOLOV5::detect(const cv::Mat & raw_img, int frame_count)
     return std::list<Armor>();
   }
 
+  // 是否使用roi裁切
   cv::Mat bgr_img;
   if (use_roi_) {
     if (roi_.width == -1) {  // -1 表示该维度不裁切
@@ -74,6 +77,7 @@ std::list<Armor> YOLOV5::detect(const cv::Mat & raw_img, int frame_count)
     bgr_img = raw_img;
   }
 
+  // resize比例计算
   auto x_scale = static_cast<double>(640) / bgr_img.rows;
   auto y_scale = static_cast<double>(640) / bgr_img.cols;
   auto scale = std::min(x_scale, y_scale);
@@ -81,17 +85,20 @@ std::list<Armor> YOLOV5::detect(const cv::Mat & raw_img, int frame_count)
   auto w = static_cast<int>(bgr_img.cols * scale);
 
   // preproces
+  // 将图像缩放到640x640，并填充空白区域
   auto input = cv::Mat(640, 640, CV_8UC3, cv::Scalar(0, 0, 0));
   auto roi = cv::Rect(0, 0, w, h);
   cv::resize(bgr_img, input(roi), {w, h});
   ov::Tensor input_tensor(ov::element::u8, {1, 640, 640, 3}, input.data);
 
   // infer
+  // 进行推理
   auto infer_request = compiled_model_.create_infer_request();
   infer_request.set_input_tensor(input_tensor);
   infer_request.infer();
 
   // postprocess
+  // 获取输出结果
   auto output_tensor = infer_request.get_output_tensor();
   auto output_shape = output_tensor.get_shape();
   cv::Mat output(output_shape[1], output_shape[2], CV_32F, output_tensor.data());
@@ -99,6 +106,7 @@ std::list<Armor> YOLOV5::detect(const cv::Mat & raw_img, int frame_count)
   return parse(scale, output, raw_img, frame_count);
 }
 
+// 解析推理结果函数
 std::list<Armor> YOLOV5::parse(
   double scale, cv::Mat & output, const cv::Mat & bgr_img, int frame_count)
 {
@@ -108,6 +116,7 @@ std::list<Armor> YOLOV5::parse(
   std::vector<cv::Rect> boxes;
   std::vector<std::vector<cv::Point2f>> armors_key_points;
   for (int r = 0; r < output.rows; r++) {
+    // 置信度
     double score = output.at<float>(r, 8);
     score = sigmoid(score);
 
@@ -156,6 +165,7 @@ std::list<Armor> YOLOV5::parse(
     armors_key_points.emplace_back(armor_key_points);
   }
 
+  // 非极大值抑制
   std::vector<int> indices;
   cv::dnn::NMSBoxes(boxes, confidences, score_threshold_, nms_threshold_, indices);
 
@@ -169,6 +179,7 @@ std::list<Armor> YOLOV5::parse(
     }
   }
 
+  //检测结果
   tmp_img_ = bgr_img;
   for (auto it = armors.begin(); it != armors.end();) {
     if (!check_name(*it)) {
@@ -187,11 +198,13 @@ std::list<Armor> YOLOV5::parse(
     ++it;
   }
 
+  // 绘制检测结果
   if (debug_) draw_detections(bgr_img, armors, frame_count);
 
   return armors;
 }
 
+// 检查装甲板名称是否有效
 bool YOLOV5::check_name(const Armor & armor) const
 {
   auto name_ok = armor.name != ArmorName::not_armor;
@@ -203,6 +216,7 @@ bool YOLOV5::check_name(const Armor & armor) const
   return name_ok && confidence_ok;
 }
 
+// 检查装甲板类型是否有效
 bool YOLOV5::check_type(const Armor & armor) const
 {
   auto name_ok = (armor.type == ArmorType::small)
@@ -216,6 +230,7 @@ bool YOLOV5::check_type(const Armor & armor) const
   return name_ok;
 }
 
+// 获取归一化的中心点坐标
 cv::Point2f YOLOV5::get_center_norm(const cv::Mat & bgr_img, const cv::Point2f & center) const
 {
   auto h = bgr_img.rows;
@@ -223,6 +238,8 @@ cv::Point2f YOLOV5::get_center_norm(const cv::Mat & bgr_img, const cv::Point2f &
   return {center.x / w, center.y / h};
 }
 
+// 绘制检测结果函数
+// 在图像上绘制检测到的装甲板及其信息
 void YOLOV5::draw_detections(
   const cv::Mat & img, const std::list<Armor> & armors, int frame_count) const
 {
@@ -251,6 +268,8 @@ void YOLOV5::save(const Armor & armor) const
   cv::imwrite(img_path, tmp_img_);
 }
 
+// sigmoid 函数
+// 将网络输出映射到0-1之间
 double YOLOV5::sigmoid(double x)
 {
   if (x > 0)

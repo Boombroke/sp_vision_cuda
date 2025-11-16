@@ -16,6 +16,7 @@ constexpr int HORIZON = HALF_HORIZON * 2;
 
 using Trajectory = Eigen::Matrix<double, 4, HORIZON>;  // yaw, yaw_vel, pitch, pitch_vel
 
+// 规划类
 struct Plan
 {
   bool control;
@@ -30,6 +31,7 @@ struct Plan
   float pitch_acc;
 };
 
+// 规划器
 class Planner
 {
 public:

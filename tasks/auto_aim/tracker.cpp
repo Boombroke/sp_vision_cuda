@@ -28,6 +28,7 @@ Tracker::Tracker(const std::string & config_path, Solver & solver)
 
 std::string Tracker::state() const { return state_; }
 
+// 返回 跟踪维护的目标列表
 std::list<Target> Tracker::track(
   std::list<Armor> & armors, std::chrono::steady_clock::time_point t, bool use_enemy_color)
 {
@@ -39,6 +40,8 @@ std::list<Target> Tracker::track(
     tools::logger()->warn("[Tracker] Large dt: {:.3f}s", dt);
     state_ = "lost";
   }
+
+  // 这边过滤真有问题吧
   // 过滤掉非我方装甲板
   armors.remove_if([&](const auto_aim::Armor & a) { return a.color != enemy_color_; });
 
@@ -62,10 +65,11 @@ std::list<Target> Tracker::track(
     [](const auto_aim::Armor & a, const auto_aim::Armor & b) { return a.priority < b.priority; });
 
   bool found;
+  // 设置新目标
   if (state_ == "lost") {
     found = set_target(armors, t);
   }
-
+  // 更新目标           
   else {
     found = update_target(armors, t);
   }
@@ -94,6 +98,9 @@ std::list<Target> Tracker::track(
   std::list<Target> targets = {target_};
   return targets;
 }
+
+
+
 
 std::tuple<omniperception::DetectionResult, std::list<Target>> Tracker::track(
   const std::vector<omniperception::DetectionResult> & detection_queue, std::list<Armor> & armors,
@@ -177,6 +184,9 @@ std::tuple<omniperception::DetectionResult, std::list<Target>> Tracker::track(
   return {switch_target, targets};
 }
 
+
+
+// 设置状态机
 void Tracker::state_machine(bool found)
 {
   if (state_ == "lost") {
@@ -228,6 +238,9 @@ void Tracker::state_machine(bool found)
   }
 }
 
+
+
+// 设置新目标
 bool Tracker::set_target(std::list<Armor> & armors, std::chrono::steady_clock::time_point t)
 {
   if (armors.empty()) return false;
@@ -263,6 +276,7 @@ bool Tracker::set_target(std::list<Armor> & armors, std::chrono::steady_clock::t
   return true;
 }
 
+// 更新目标
 bool Tracker::update_target(std::list<Armor> & armors, std::chrono::steady_clock::time_point t)
 {
   target_.predict(t);

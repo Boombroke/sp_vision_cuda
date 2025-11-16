@@ -6,6 +6,7 @@
 
 namespace auto_aim
 {
+// 灯条 构造函数
 Lightbar::Lightbar(const cv::RotatedRect & rotated_rect, std::size_t id)
 : id(id), rotated_rect(rotated_rect)
 {
@@ -30,7 +31,10 @@ Lightbar::Lightbar(const cv::RotatedRect & rotated_rect, std::size_t id)
   ratio = length / width;
 }
 
+
 //传统构造函数
+// 左右灯条 构造 
+// 你最喜欢的cj
 Armor::Armor(const Lightbar & left, const Lightbar & right)
 : left(left), right(right), duplicated(false)
 {

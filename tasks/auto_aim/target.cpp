@@ -7,6 +7,8 @@
 
 namespace auto_aim
 {
+
+// 构造函数
 Target::Target(
   const Armor & armor, std::chrono::steady_clock::time_point t, double radius, int armor_num,
   Eigen::VectorXd P0_dig)
@@ -72,6 +74,7 @@ void Target::predict(std::chrono::steady_clock::time_point t)
   t_ = t;
 }
 
+// 预测dt段的状态
 void Target::predict(double dt)
 {
   // 状态转移矩阵
@@ -104,6 +107,7 @@ void Target::predict(double dt)
   auto a = dt * dt * dt * dt / 4;
   auto b = dt * dt * dt / 2;
   auto c = dt * dt;
+
   // 预测过程噪声偏差的方差
   // clang-format off
   Eigen::MatrixXd Q{
@@ -121,6 +125,7 @@ void Target::predict(double dt)
   };
   // clang-format on
 
+  
   // 防止夹角求和出现异常值
   auto f = [&](const Eigen::VectorXd & x) -> Eigen::VectorXd {
     Eigen::VectorXd x_prior = F * x;
@@ -128,11 +133,13 @@ void Target::predict(double dt)
     return x_prior;
   };
 
+  
   // 前哨站转速特判
   if (this->convergened() && this->name == ArmorName::outpost && std::abs(this->ekf_.x[7]) > 2)
     this->ekf_.x[7] = this->ekf_.x[7] > 0 ? 2.51 : -2.51;
 
-  ekf_.predict(F, Q, f);
+  
+    ekf_.predict(F, Q, f);
 }
 
 void Target::update(const Armor & armor)
@@ -238,6 +245,7 @@ std::vector<Eigen::Vector4d> Target::armor_xyza_list() const
   return _armor_xyza_list;
 }
 
+// 判断滤波器是否发散
 bool Target::diverged() const
 {
   auto r_ok = ekf_.x[8] > 0.05 && ekf_.x[8] < 0.5;
@@ -249,6 +257,7 @@ bool Target::diverged() const
   return true;
 }
 
+// 判断滤波器是否收敛
 bool Target::convergened()
 {
   if (this->name != ArmorName::outpost && update_count_ > 3 && !this->diverged()) {
