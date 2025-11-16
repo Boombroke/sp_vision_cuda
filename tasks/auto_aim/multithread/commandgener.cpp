@@ -6,11 +6,11 @@ namespace auto_aim
 {
 namespace multithread
 {
-
+// 命令生成线程
 CommandGener::CommandGener(
-  auto_aim::Shooter & shooter, auto_aim::Aimer & aimer, io::CBoard & cboard,
+  auto_aim::Shooter & shooter, auto_aim::Aimer & aimer, io::Gimbal & gimbal,
   tools::Plotter & plotter, bool debug)
-: shooter_(shooter), aimer_(aimer), cboard_(cboard), plotter_(plotter), stop_(false), debug_(debug)
+: shooter_(shooter), aimer_(aimer), gimbal_(gimbal), plotter_(plotter), stop_(false), debug_(debug)
 {
   thread_ = std::thread(&CommandGener::generate_command, this);
 }
@@ -23,8 +23,11 @@ CommandGener::~CommandGener()
   }
   cv_.notify_all();
   if (thread_.joinable()) thread_.join();
+  tools::logger()->info("[CommandGener] Command generation thread stopped");
+
 }
 
+// 推入最新数据
 void CommandGener::push(
   const std::list<auto_aim::Target> & targets, const std::chrono::steady_clock::time_point & t,
   double bullet_speed, const Eigen::Vector3d & gimbal_pos)
@@ -34,6 +37,7 @@ void CommandGener::push(
   cv_.notify_one();
 }
 
+// 生成并发送命令
 void CommandGener::generate_command()
 {
   auto t0 = std::chrono::steady_clock::now();
@@ -46,6 +50,8 @@ void CommandGener::generate_command()
       } else
         input = std::nullopt;
     }
+
+
     if (input) {
       auto command = aimer_.aim(input->targets_, input->t, input->bullet_speed);
       command.shoot = shooter_.shoot(command, aimer_, input->targets_, input->gimbal_pos);
@@ -54,7 +60,12 @@ void CommandGener::generate_command()
                                    : std::sqrt(
                                        tools::square(input->targets_.front().ekf_x()[0]) +
                                        tools::square(input->targets_.front().ekf_x()[2]));
-      cboard_.send(command);
+      gimbal_.send(
+        command.control, command.shoot, 
+        command.yaw, 0.0f, 0.0f, 
+        command.pitch, 0.0f, 0.0f);
+
+
       if (debug_) {
         nlohmann::json data;
         data["t"] = tools::delta_time(std::chrono::steady_clock::now(), t0);
@@ -65,6 +76,7 @@ void CommandGener::generate_command()
         plotter_.plot(data);
       }
     }
+    //TODO：没目标 要不要去控制
     std::this_thread::sleep_for(std::chrono::milliseconds(2));  //approximately 500Hz
   }
 }

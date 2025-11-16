@@ -79,6 +79,7 @@ Eigen::Quaterniond Gimbal::q(std::chrono::steady_clock::time_point t)
 
 void Gimbal::send(io::VisionToGimbal VisionToGimbal)
 {
+  tx_data_.head = 0x50;
   tx_data_.mode = VisionToGimbal.mode;
   tx_data_.yaw = VisionToGimbal.yaw;
   tx_data_.yaw_vel = VisionToGimbal.yaw_vel;
@@ -100,6 +101,7 @@ void Gimbal::send(
   bool control, bool fire, float yaw, float yaw_vel, float yaw_acc, float pitch, float pitch_vel,
   float pitch_acc)
 {
+  tx_data_.head = 0x50;
   tx_data_.mode = control ? (fire ? 2 : 1) : 0;
   tx_data_.yaw = yaw;
   tx_data_.yaw_vel = yaw_vel;
@@ -145,12 +147,12 @@ void Gimbal::read_thread()
       continue;
     }
 
-    if (rx_data_.head[0] != 'S' || rx_data_.head[1] != 'P') continue;
+    if (rx_data_.head != 0x53) continue;
 
     auto t = std::chrono::steady_clock::now();
 
     if (!read(
-          reinterpret_cast<uint8_t *>(&rx_data_) + sizeof(rx_data_.head),
+          reinterpret_cast<uint8_t *>(&rx_data_.mode),
           sizeof(rx_data_) - sizeof(rx_data_.head))) {
       error_count++;
       continue;
