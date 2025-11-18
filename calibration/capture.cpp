@@ -13,7 +13,7 @@
 const std::string keys =
   "{help h usage ?  |                          | 输出命令行参数说明}"
   "{@config-path c  | configs/calibration.yaml | yaml配置文件路径 }"
-  "{output-folder o |      assets/img_with_q   | 输出文件夹路径   }";
+  "{output-folder o |      assets/img_with_q1   | 输出文件夹路径   }";
 
 
 // 写入q

@@ -1,0 +1,142 @@
+enemy_color: "red"
+# enemy_color: "blue"
+
+#####-----神经网络参数-----#####
+yolo_name: yolov5
+classify_model: assets/tiny_resnet.onnx
+yolo11_model_path: assets/yolo11.xml
+yolov8_model_path: assets/yolov8.xml
+yolov5_model_path: assets/yolov5.xml
+device: CPU
+min_confidence: 0.8
+use_traditional: true
+
+#####-----ROI-----#####
+roi: 
+  x: 420
+  y: 50
+  width: 600
+  height: 600
+
+use_roi: false
+
+#####-----传统方法参数-----#####
+threshold: 150
+max_angle_error: 45 # degree
+min_lightbar_ratio: 1.5
+max_lightbar_ratio: 20
+min_lightbar_length: 8
+min_armor_ratio: 1
+max_armor_ratio: 5
+max_side_ratio: 1.5
+max_rectangular_error: 25 # degree
+
+#####-----tracker参数-----#####
+min_detect_count: 5
+max_temp_lost_count: 15
+outpost_max_temp_lost_count: 75
+
+#####-----aimer参数-----#####
+yaw_offset: 2 # degree -2.5
+pitch_offset: 6.5 # degree 2
+comming_angle: 55 # degree
+leaving_angle: 20 # degree
+decision_speed: 7 # rad/s
+high_speed_delay_time: 0.0 # s
+low_speed_delay_time: 0.0 # s planner use this value
+
+#####-----shooter参数-----#####
+first_tolerance: 3 # 近距离射击容差，degree
+second_tolerance: 2 # 远距离射击容差，degree
+judge_distance: 2 #距离判断阈值
+auto_fire: true # 是否由自瞄控制射击
+
+camera_name: "hikrobot"
+exposure_ms: 2.5
+gain: 16.9
+vid_pid: "2bdf:0001"
+
+
+
+
+
+
+#  1  0  0
+#  0  1  0
+#  0  0  1
+R_gimbal2imubody: [-1, 0, 0, 0, -1, 0, 0, 0, 1]
+
+
+# sp
+# # 重投影误差: 0.1820px
+# camera_matrix: [1785.4881526822305, 0, 672.4806478241826, 0, 1785.026019470562, 559.89603224794314, 0, 0, 1]
+# distort_coeffs: [-0.076005079619881746, 0.11182817466388446, 0.0005362204787722057, -0.0027546300984895122, 0]
+
+# 相机同理想情况的偏角: yaw1.44 pitch-7.28 roll0.96 degree
+# 标定板到世界坐标系原点的水平距离: 1.13 m
+# 标定板同竖直摆放时的偏角: yaw7.61 pitch13.92 roll-0.46 degree
+R_camera2gimbal: [-0.027182119030230909, -0.12616154330853446, 0.99163723074269183, -0.99949106557517331, 0.019998323121329122, -0.024853106601381177, -0.016695575474690555, -0.99180811252093692, -0.12664093215554434]
+t_camera2gimbal: [0.13160669975045827, 0.10377721766577375, 0.024908271912914642]
+
+
+# 重投影误差: 0.0508px
+camera_matrix: [2412.0679511977073, 0, 737.19325744249397, 0, 2410.4825960789312, 533.2050894529774, 0, 0, 1]
+distort_coeffs: [-0.019899949096430457, 0.23559587731785364, -0.0018814664098569731, 0.0034054129682361033, 0]
+
+
+# # 手眼标定用相机的数据
+# # 相机同理想情况的偏角: yaw-142.91 pitch25.94 roll-94.99 degree
+# # 标定板到世界坐标系原点的水平距离: 0.14 m
+# # 标定板同竖直摆放时的偏角: yaw-111.43 pitch-23.97 roll-85.88 degree
+# R_camera2gimbal: [0.29507889203885679, 0.63123266824563318, -0.71726826641962871, -0.33209893524561096, 0.77164788236291304, 0.54246644398853228, 0.89590107974142552, 0.078133630303029195, 0.43732869918839901]
+# t_camera2gimbal: [2.0345583096991611, -1.4624778460475281, -1.1838836326690951]
+
+
+# # 手眼数据
+# # 相机同理想情况的偏角: yaw178.97 pitch0.35 roll-0.85 degree
+# # 标定板到世界坐标系原点的水平距离: 2.18 m
+# # 标定板同竖直摆放时的偏角: yaw-67.89 pitch5.51 roll-1.53 degree
+# R_camera2gimbal: [-0.018196108120002524, -0.0063787871111743522, -0.99981408908070302, 0.99972559268700145, 0.014638726888483739, -0.018287892216120545, 0.014752659960469728, -0.9998725012470715, 0.0061106688681410899]
+# t_camera2gimbal: [-0.012029295700296077, -0.055211376149102029, 0.036600808936686942]
+
+# # 相机同理想情况的偏角: yaw179.04 pitch-0.17 roll-1.25 degree
+# # 标定板到世界坐标系原点的水平距离: 2.17 m
+# # 标定板同竖直摆放时的偏角: yaw-77.47 pitch14.08 roll-1.99 degree
+# R_camera2gimbal: [-0.017024430949324296, 0.0025670046276193557, -0.99985177863425989, 0.99961769390070987, 0.021832898422642539, -0.016964391739562896, 0.021786114648520063, -0.99975833831666927, -0.0029377159177131889]
+# t_camera2gimbal: [-0.13653735977063711, -0.073110152214848997, 0.057929698601974805]
+
+
+
+
+
+
+#####-----cboard参数-----#####
+quaternion_canid: 0x100
+bullet_speed_canid: 0x101
+send_canid: 0xff
+can_interface: "can0"
+
+#####-----gimbal参数-----#####
+com_port: "/dev/ttyACM0"
+yaw_kp: 0
+yaw_kd: 0
+pitch_kp: 0
+pitch_kd: 0
+
+#####-----planner-----#####
+fire_thresh: 0.0035
+
+max_yaw_acc: 50
+Q_yaw: [9e6, 0]
+R_yaw: [1]
+
+max_pitch_acc: 100
+Q_pitch: [9e6, 0]
+R_pitch: [1]
+
+#####-----buff_detector参数-----#####
+model: "assets/yolo11_buff_int8.xml"
+
+#####-----buff_aimer参数-----#####
+fire_gap_time: 0.700   # s
+predict_time: 0.120     # s

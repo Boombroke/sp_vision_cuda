@@ -12,7 +12,7 @@
 const std::string keys =
   "{help h usage ? |                          | 输出命令行参数说明}"
   "{config-path c  | configs/calibration.yaml | yaml配置文件路径 }"
-  "{@input-folder  | assets/img_with_q        | 输入文件夹路径   }";
+  "{@input-folder  | assets/img_with_q1        | 输入文件夹路径   }";
 
 std::vector<cv::Point3f> centers_3d(const cv::Size & pattern_size, const float center_distance)
 {
