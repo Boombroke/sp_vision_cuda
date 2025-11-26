@@ -10,7 +10,9 @@ namespace auto_aim
 
 // 构造函数
 Target::Target(
-  const Armor & armor, std::chrono::steady_clock::time_point t, double radius, int armor_num,
+  const Armor & armor, 
+  std::chrono::steady_clock::time_point t, 
+  double radius, int armor_num,
   Eigen::VectorXd P0_dig)
 : name(armor.name),
   armor_type(armor.type),
@@ -50,6 +52,7 @@ Target::Target(
 
   ekf_ = tools::ExtendedKalmanFilter(x0, P0, x_add);  //初始化滤波器（预测量、预测量协方差）
 }
+
 
 Target::Target(double x, double vyaw, double radius, double h) : armor_num_(4)
 {
@@ -94,6 +97,8 @@ void Target::predict(double dt)
   };
   // clang-format on
 
+
+  
   // Piecewise White Noise Model
   // https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python/blob/master/07-Kalman-Filter-Math.ipynb
   double v1, v2;
@@ -107,6 +112,8 @@ void Target::predict(double dt)
   auto a = dt * dt * dt * dt / 4;
   auto b = dt * dt * dt / 2;
   auto c = dt * dt;
+
+
 
   // 预测过程噪声偏差的方差
   // clang-format off
@@ -142,6 +149,8 @@ void Target::predict(double dt)
     ekf_.predict(F, Q, f);
 }
 
+
+// 更新装甲板
 void Target::update(const Armor & armor)
 {
   // 装甲板匹配
@@ -149,11 +158,13 @@ void Target::update(const Armor & armor)
   auto min_angle_error = 1e10;
   const std::vector<Eigen::Vector4d> & xyza_list = armor_xyza_list();
 
+  // 得到 pair vector: (xyza, id)
   std::vector<std::pair<Eigen::Vector4d, int>> xyza_i_list;
   for (int i = 0; i < armor_num_; i++) {
     xyza_i_list.push_back({xyza_list[i], i});
   }
 
+  // 按照距离排序
   std::sort(
     xyza_i_list.begin(), xyza_i_list.end(),
     [](const std::pair<Eigen::Vector4d, int> & a, const std::pair<Eigen::Vector4d, int> & b) {
@@ -161,6 +172,8 @@ void Target::update(const Armor & armor)
       Eigen::Vector3d ypd2 = tools::xyz2ypd(b.first.head(3));
       return ypd1[2] < ypd2[2];
     });
+
+
 
   // 取前3个distance最小的装甲板
   for (int i = 0; i < 3; i++) {
@@ -188,8 +201,10 @@ void Target::update(const Armor & armor)
   last_id = id;
   update_count_++;
 
+  // 更新 yaw pitch distance angle
   update_ypda(armor, id);
 }
+
 
 void Target::update_ypda(const Armor & armor, int id)
 {
@@ -199,11 +214,18 @@ void Target::update_ypda(const Armor & armor, int id)
   auto center_yaw = std::atan2(armor.xyz_in_world[1], armor.xyz_in_world[0]);
   auto delta_angle = tools::limit_rad(armor.ypr_in_world[0] - center_yaw);
   Eigen::VectorXd R_dig{
-    {4e-3, 4e-3, log(std::abs(delta_angle) + 1) + 1,
-     log(std::abs(armor.ypd_in_world[2]) + 1) / 200 + 9e-2}};
-
+    {4e-3, 4e-3, log(std::abs(delta_angle) + 1) + 1, log(std::abs(armor.ypd_in_world[2]) + 1) / 200 + 9e-2}};
   //测量过程噪声偏差的方差
-  Eigen::MatrixXd R = R_dig.asDiagonal();
+  Eigen::MatrixXd R = R_dig.asDiagonal();// 转换为对角矩阵
+
+  // R = [
+  //   [4e-3,    0,    0,    0    ]
+  //   [0,    4e-3,    0,    0    ]
+  //   [0,       0,  var2,   0    ]  // var2 = log(|delta_angle|+1) + 1
+  //   [0,       0,    0,  var3   ]  // var3 = log(|distance|+1)/200 + 9e-2
+  // ]
+
+
 
   // 定义非线性转换函数h: x -> z
   auto h = [&](const Eigen::VectorXd & x) -> Eigen::Vector4d {
@@ -222,12 +244,15 @@ void Target::update_ypda(const Armor & armor, int id)
     return c;
   };
 
+  // z反映的才是真正的识别出的观测数值
   const Eigen::VectorXd & ypd = armor.ypd_in_world;
   const Eigen::VectorXd & ypr = armor.ypr_in_world;
   Eigen::VectorXd z{{ypd[0], ypd[1], ypd[2], ypr[0]}};  //获得观测量
 
   ekf_.update(z, H, R, h, z_subtract);
 }
+
+
 
 Eigen::VectorXd Target::ekf_x() const { return ekf_.x; }
 
@@ -244,6 +269,9 @@ std::vector<Eigen::Vector4d> Target::armor_xyza_list() const
   }
   return _armor_xyza_list;
 }
+
+
+
 
 // 判断滤波器是否发散
 bool Target::diverged() const
@@ -286,6 +314,8 @@ Eigen::Vector3d Target::h_armor_xyz(const Eigen::VectorXd & x, int id) const
   return {armor_x, armor_y, armor_z};
 }
 
+
+// 没看懂VvV
 Eigen::MatrixXd Target::h_jacobian(const Eigen::VectorXd & x, int id) const
 {
   auto angle = tools::limit_rad(x[6] + id * 2 * CV_PI / armor_num_);
@@ -325,6 +355,8 @@ Eigen::MatrixXd Target::h_jacobian(const Eigen::VectorXd & x, int id) const
   return H_armor_ypda * H_armor_xyza;
 }
 
+
 bool Target::checkinit() { return isinit; }
+
 
 }  // namespace auto_aim

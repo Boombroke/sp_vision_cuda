@@ -30,6 +30,7 @@ std::vector<cv::Point3f> centers_3d(const cv::Size & pattern_size, const float c
   return centers_3d;
 }
 
+// 写入q
 Eigen::Quaterniond read_q(const std::string & q_path)
 {
   std::ifstream q_file(q_path);
@@ -38,6 +39,7 @@ Eigen::Quaterniond read_q(const std::string & q_path)
   return {w, x, y, z};
 }
 
+// 加载数据
 void load(
   const std::string & input_folder, const std::string & config_path,
   std::vector<double> & R_gimbal2imubody_data, std::vector<cv::Mat> & R_world2gimbal_list,
@@ -53,10 +55,12 @@ void load(
   auto camera_matrix_data = yaml["camera_matrix"].as<std::vector<double>>();
   auto distort_coeffs_data = yaml["distort_coeffs"].as<std::vector<double>>();
 
+  // 相机畸变
   cv::Size pattern_size(pattern_cols, pattern_rows);
   Eigen::Matrix<double, 3, 3, Eigen::RowMajor> R_gimbal2imubody(R_gimbal2imubody_data.data());
   cv::Matx33d camera_matrix(camera_matrix_data.data());
   cv::Mat distort_coeffs(distort_coeffs_data);
+
 
   for (int i = 1; true; i++) {
     // 读取图片和对应四元数
@@ -67,7 +71,7 @@ void load(
     if (img.empty()) break;
 
     // 计算云台的欧拉角
-    Eigen::Matrix3d R_imubody2imuabs = q.toRotationMatrix();
+    Eigen::Matrix3d R_imubody2imuabs = q.toRotationMatrix();//imu 反映的云台的姿态
     Eigen::Matrix3d R_gimbal2world =
       R_gimbal2imubody.transpose() * R_imubody2imuabs * R_gimbal2imubody;
     Eigen::Vector3d ypr = tools::eulers(R_gimbal2world, 2, 1, 0) * 57.3;  // degree

@@ -5,6 +5,7 @@
 
 namespace tools
 {
+// 限制角度在[-π, π]之间
 double limit_rad(double angle)
 {
   while (angle > CV_PI) angle -= 2 * CV_PI;

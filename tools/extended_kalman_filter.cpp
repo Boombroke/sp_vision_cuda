@@ -34,12 +34,21 @@ Eigen::VectorXd ExtendedKalmanFilter::predict(
   return x;
 }
 
+
+
 Eigen::VectorXd ExtendedKalmanFilter::update(
   const Eigen::VectorXd & z, const Eigen::MatrixXd & H, const Eigen::MatrixXd & R,
   std::function<Eigen::VectorXd(const Eigen::VectorXd &, const Eigen::VectorXd &)> z_subtract)
 {
   return update(z, H, R, [&](const Eigen::VectorXd & x) { return H * x; }, z_subtract);
 }
+// z：实际观测值
+// H：非线性转换函数h的雅可比矩阵
+// R：测量过程噪声偏差的方差
+// h：观测函数 得到预测出的观测值
+// z_subtract：观测值减去观测函数的结果
+
+
 
 Eigen::VectorXd ExtendedKalmanFilter::update(
   const Eigen::VectorXd & z, const Eigen::MatrixXd & H, const Eigen::MatrixXd & R,

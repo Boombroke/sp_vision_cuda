@@ -84,9 +84,11 @@ void Solver::solve(Armor & armor) const
                      armor.name == ArmorName::five);
   if (is_balance) return;
 
+  // 优化yaw
   optimize_yaw(armor);
 }
 
+// 重投影，获得装甲板在图像上的投影点
 std::vector<cv::Point2f> Solver::reproject_armor(
   const Eigen::Vector3d & xyz_in_world, double yaw, ArmorType type, ArmorName name) const
 {
@@ -193,8 +195,10 @@ double Solver::oupost_reprojection_error(Armor armor, const double & pitch)
   return error;
 }
 
+// 优化yaw
 void Solver::optimize_yaw(Armor & armor) const
 {
+  // 获取云台 yaw roll pitch
   Eigen::Vector3d gimbal_ypr = tools::eulers(R_gimbal2world_, 2, 1, 0);
 
   constexpr double SEARCH_RANGE = 140;  // degree
@@ -251,6 +255,7 @@ double Solver::SJTU_cost(
   return cost;
 }
 
+// 计算装甲板重投影误差
 double Solver::armor_reprojection_error(
   const Armor & armor, double yaw, const double & inclined) const
 {

@@ -5,7 +5,8 @@
 #include <opencv2/opencv.hpp>
 
 #include "io/camera.hpp"
-#include "io/cboard.hpp"
+// #include "io/cboard.hpp"
+#include "io/gimbal/gimbal.hpp"
 #include "tasks/auto_aim/aimer.hpp"
 #include "tasks/auto_aim/multithread/commandgener.hpp"
 #include "tasks/auto_aim/multithread/mt_detector.hpp"
@@ -39,15 +40,17 @@ int main(int argc, char * argv[])
   tools::Plotter plotter;
   tools::Recorder recorder(100);  //根据实际帧率调整
 
-  io::CBoard cboard(config_path);
+  // io::CBoard cboard(config_path);
+  
   io::Camera camera(config_path);
+  io::Gimbal gimbal(config_path);
 
   auto_aim::multithread::MultiThreadDetector detector(config_path, true);
   auto_aim::Solver solver(config_path);
   auto_aim::Tracker tracker(config_path, solver);
   auto_aim::Aimer aimer(config_path);
   auto_aim::Shooter shooter(config_path);
-  auto_aim::multithread::CommandGener commandgener(shooter, aimer, cboard, plotter, true);
+  auto_aim::multithread::CommandGener commandgener(shooter, aimer, gimbal, plotter, true);
 
   auto detect_thread = std::thread([&]() {
     cv::Mat img;
@@ -59,28 +62,34 @@ int main(int argc, char * argv[])
     }
   });
 
-  auto mode = io::Mode::idle;
-  auto last_mode = io::Mode::idle;
+  auto mode = io::GimbalMode::IDLE;
+  auto last_mode = io::GimbalMode::IDLE;
 
   while (!exiter.exit()) {
     auto t0 = std::chrono::steady_clock::now();
     /// 自瞄核心逻辑
     auto [img, armors, t] = detector.debug_pop();
-    Eigen::Quaterniond q = cboard.imu_at(t - 1ms);
-    mode = cboard.mode;
+    Eigen::Quaterniond q = gimbal.q(t - 1ms);
+    mode = gimbal.mode();
 
     if (last_mode != mode) {
-      tools::logger()->info("Switch to {}", io::MODES[mode]);
+      // tools::logger()->info("Switch to {}", io::MODES[mode]);
+      tools::logger()->info("Switch to {}", gimbal.str(mode));  // 替换 io::MODES[mode]
+
       last_mode = mode;
     }
 
     solver.set_R_gimbal2world(q);
 
-    Eigen::Vector3d ypr = tools::eulers(solver.R_gimbal2world(), 2, 1, 0);
+        // 从串口获取欧拉角
+    auto gimbal_state = gimbal.state();
+    Eigen::Vector3d ypr = {gimbal_state.yaw, gimbal_state.pitch, 0};  // 直接从串口获取
+
+    //Eigen::Vector3d ypr = tools::eulers(solver.R_gimbal2world(), 2, 1, 0);
 
     auto targets = tracker.track(armors, t);
 
-    commandgener.push(targets, t, cboard.bullet_speed, ypr);  // 发送给决策线程
+    commandgener.push(targets, t, gimbal_state.bullet_speed, ypr);  // 发送给决策线程
 
     /// debug
     tools::draw_text(img, fmt::format("[{}]", tracker.state()), {10, 30}, {255, 255, 255});
@@ -155,9 +164,17 @@ int main(int argc, char * argv[])
     }
 
     // 云台响应情况
-    data["gimbal_yaw"] = ypr[0] * 57.3;
-    data["gimbal_pitch"] = ypr[1] * 57.3;
-    data["bullet_speed"] = cboard.bullet_speed;
+
+
+    data["gimbal_yaw"] = gimbal_state.yaw;
+    data["gimbal_pitch"] = gimbal_state.pitch;
+    data["gimbal_yaw_vel"] = gimbal_state.yaw_vel;
+    data["gimbal_pitch_vel"] = gimbal_state.pitch_vel;
+    data["bullet_speed"] = gimbal_state.bullet_speed;
+    data["bullet_count"] = gimbal_state.bullet_count;
+    // data["gimbal_yaw"] = ypr[0] * 57.3;
+    // data["gimbal_pitch"] = ypr[1] * 57.3;
+    // data["bullet_speed"] = gimbal.bullet_speed;
 
     plotter.plot(data);
 

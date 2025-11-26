@@ -11,8 +11,8 @@ namespace tools
 class ExtendedKalmanFilter
 {
 public:
-  Eigen::VectorXd x;
-  Eigen::MatrixXd P;
+  Eigen::VectorXd x;// 状态向量
+  Eigen::MatrixXd P;// 状态协方差矩阵
 
   ExtendedKalmanFilter() = default;
 

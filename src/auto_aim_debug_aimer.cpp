@@ -58,6 +58,7 @@ int main(int argc, char * argv[])
   while (!exiter.exit()) {
     auto t0 = std::chrono::steady_clock::now();
 
+    // 读取图像
     camera.read(img, t);
     
     // 从串口获取四元数
@@ -73,17 +74,21 @@ int main(int argc, char * argv[])
 
     // recorder.record(img, q, t);
 
+    // 设定 gimbal 到 world 的旋转矩阵
     solver.set_R_gimbal2world(q);
 
     // 从串口获取欧拉角
     auto gimbal_state = gimbal.state();
     Eigen::Vector3d ypr = {gimbal_state.yaw, gimbal_state.pitch, 0};  // 直接从串口获取
 
+    //识别装甲板
     auto armors = detector.detect(img);
 
+    //跟踪目标
     auto targets = tracker.track(armors, t);
 
     // 使用串口获取的子弹速度
+    // 获取击打逻辑
     auto command = aimer.aim(targets, t, gimbal_state.bullet_speed);  // 替换 cboard.bullet_speed
 
     // 决定是否射击
@@ -165,8 +170,7 @@ int main(int argc, char * argv[])
       data["nees"] = target.ekf().data.at("nees");
       data["nis_fail"] = target.ekf().data.at("nis_fail");
       data["nees_fail"] = target.ekf().data.at("nees_fail");
-      data["recent_nis_failures"][2025-11-17 20:25:35.572] [info] [Gimbal] read_thread stopped.
- = target.ekf().data.at("recent_nis_failures");
+      data["recent_nis_failures"]= target.ekf().data.at("recent_nis_failures");
     }
 
     // 云台响应情况（从串口获取）

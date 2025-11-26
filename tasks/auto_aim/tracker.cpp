@@ -9,6 +9,8 @@
 
 namespace auto_aim
 {
+
+//初始化Tracker
 Tracker::Tracker(const std::string & config_path, Solver & solver)
 : solver_{solver},
   detect_count_(0),
@@ -26,12 +28,16 @@ Tracker::Tracker(const std::string & config_path, Solver & solver)
   normal_temp_lost_count_ = max_temp_lost_count_;
 }
 
+// 返回当前状态
 std::string Tracker::state() const { return state_; }
 
 // 返回 跟踪维护的目标列表
 std::list<Target> Tracker::track(
-  std::list<Armor> & armors, std::chrono::steady_clock::time_point t, bool use_enemy_color)
+  std::list<Armor> & armors, 
+  std::chrono::steady_clock::time_point t, 
+  bool use_enemy_color)
 {
+  // 时间间隔
   auto dt = tools::delta_time(t, last_timestamp_);
   last_timestamp_ = t;
 
@@ -41,7 +47,7 @@ std::list<Target> Tracker::track(
     state_ = "lost";
   }
 
-  // 这边过滤真有问题吧
+  // 这边过滤真有问题吧 ？？？
   // 过滤掉非我方装甲板
   armors.remove_if([&](const auto_aim::Armor & a) { return a.color != enemy_color_; });
 
@@ -53,6 +59,7 @@ std::list<Target> Tracker::track(
   // });
 
   // 优先选择靠近图像中心的装甲板
+  // TODO:要搞清图像输入分辨率是多少
   armors.sort([](const Armor & a, const Armor & b) {
     cv::Point2f img_center(1440 / 2, 1080 / 2);  // TODO
     auto distance_1 = cv::norm(a.center - img_center);
@@ -74,6 +81,7 @@ std::list<Target> Tracker::track(
     found = update_target(armors, t);
   }
 
+  // 设置状态机
   state_machine(found);
 
   // 发散检测
@@ -102,6 +110,8 @@ std::list<Target> Tracker::track(
 
 
 
+// 不重要
+// 全向感知 tracker
 std::tuple<omniperception::DetectionResult, std::list<Target>> Tracker::track(
   const std::vector<omniperception::DetectionResult> & detection_queue, std::list<Armor> & armors,
   std::chrono::steady_clock::time_point t, bool use_enemy_color)
@@ -186,6 +196,8 @@ std::tuple<omniperception::DetectionResult, std::list<Target>> Tracker::track(
 
 
 
+
+
 // 设置状态机
 void Tracker::state_machine(bool found)
 {
@@ -246,6 +258,7 @@ bool Tracker::set_target(std::list<Armor> & armors, std::chrono::steady_clock::t
   if (armors.empty()) return false;
 
   auto & armor = armors.front();
+  // 解算装甲板
   solver_.solve(armor);
 
   // 根据兵种优化初始化参数
@@ -253,21 +266,25 @@ bool Tracker::set_target(std::list<Armor> & armors, std::chrono::steady_clock::t
                     (armor.name == ArmorName::three || armor.name == ArmorName::four ||
                      armor.name == ArmorName::five);
 
+  // 死掉的平衡
   if (is_balance) {
     Eigen::VectorXd P0_dig{{1, 64, 1, 64, 1, 64, 0.4, 100, 1, 1, 1}};
     target_ = Target(armor, t, 0.2, 2, P0_dig);
   }
-
+  // 前哨站
+  // TODO:新赛季适配
   else if (armor.name == ArmorName::outpost) {
     Eigen::VectorXd P0_dig{{1, 64, 1, 64, 1, 81, 0.4, 100, 1e-4, 0, 0}};
     target_ = Target(armor, t, 0.2765, 3, P0_dig);
   }
 
+  // 基地
   else if (armor.name == ArmorName::base) {
     Eigen::VectorXd P0_dig{{1, 64, 1, 64, 1, 64, 0.4, 100, 1e-4, 0, 0}};
     target_ = Target(armor, t, 0.3205, 3, P0_dig);
   }
 
+  // 四轮小车车
   else {
     Eigen::VectorXd P0_dig{{1, 64, 1, 64, 1, 64, 0.4, 100, 1, 1, 1}};
     target_ = Target(armor, t, 0.2, 4, P0_dig);
