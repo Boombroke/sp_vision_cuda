@@ -5,7 +5,7 @@
 namespace yolo {
 
 using namespace std;
-using namespace tdt_radar;
+using namespace bof_vision;
 static const int point_num = 4;
 
 const int NUM_BOX_ELEMENT = 16;

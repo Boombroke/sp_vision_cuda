@@ -4,7 +4,7 @@
 #include <tuple>
 #include <vector>
 
-namespace tdt_radar {
+namespace bof_vision {
 
 #define GPU_BLOCK_THREADS 512
 
@@ -56,6 +56,6 @@ struct AffineMatrix {
                  const std::tuple<int, int>& to);
 };
 
-}  // namespace tdt_radar
+}  // namespace bof_vision
 
 #endif  //__BASEINFER_HPP__

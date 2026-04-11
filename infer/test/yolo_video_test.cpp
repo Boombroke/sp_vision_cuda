@@ -109,7 +109,7 @@ int main(int argc, char** argv)
         if (!frame.isContinuous())
             frame = frame.clone();
 
-        tdt_radar::Image img(frame.data, frame.cols, frame.rows);
+        bof_vision::Image img(frame.data, frame.cols, frame.rows);
 
         auto t0 = std::chrono::high_resolution_clock::now();
         // Infer<BoxArray>::forward 返回一整帧的 yolo::BoxArray（vector<yolo::Box>）

@@ -75,7 +75,7 @@ typedef std::vector<Box> BoxArray;
  * 加载 YOLO TensorRT 引擎。
  * @param type 模型类型；Type::RP 为左上角 letterbox+黑边、22 维输出（8 关键点+logit+4 色+9 类），需匹配导出的 engine；结果中 `Box.color_id` 为 0–3，不做颜色过滤。
  */
-std::shared_ptr<tdt_radar::Infer<BoxArray>>
+std::shared_ptr<bof_vision::Infer<BoxArray>>
 load(const std::string& engine_file, Type type,
      float confidence_threshold = 0.45f, float nms_threshold = 0.6f);
 

@@ -4,7 +4,7 @@
 #include "BaseInfer.hpp"
 #include <cstring>
 
-using namespace tdt_radar;
+using namespace bof_vision;
 
 Norm Norm::mean_std(const float mean[3], const float std[3], float alpha,
                     ChannelType channel_type)

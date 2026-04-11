@@ -10,7 +10,7 @@
 
 namespace classify {
 
-using namespace tdt_radar;
+using namespace bof_vision;
 
 enum class Type : int { densenet121 = 0 };
 

@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <BaseInfer.hpp>
 
-namespace tdt_radar {
+namespace bof_vision {
 
 #define checkRuntime(call)                                                 \
     do {                                                                   \
@@ -35,14 +35,14 @@ __global__ void warp_affine_bilinear_and_normalize_plane_kernel(
 void warp_affine_bilinear_and_normalize_plane(
     uint8_t* src, int src_line_size, int src_width, int src_height,
     float* dst, int dst_width, int dst_height, float* matrix_2_3,
-    uint8_t const_value, const tdt_radar::Norm& norm, cudaStream_t stream);
+    uint8_t const_value, const bof_vision::Norm& norm, cudaStream_t stream);
 
 /** 左上角 letterbox：scale=min(dst_h/src_h,dst_w/src_w)，内容贴 (0,0)，其余填 pad_value；输出 NCHW float，norm 同 warp。 */
 void letterbox_top_left_bilinear_normalize(
     uint8_t* src, int src_line_size, int src_width, int src_height,
     float* dst, int dst_width, int dst_height, uint8_t pad_value,
-    const tdt_radar::Norm& norm, cudaStream_t stream);
+    const bof_vision::Norm& norm, cudaStream_t stream);
 
-}  // namespace tdt_radar
+}  // namespace bof_vision
 
 #endif
