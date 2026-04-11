@@ -1,9 +1,13 @@
 #include "yolo.hpp"
 
+#include <stdexcept>
 #include <yaml-cpp/yaml.h>
 
 #include "yolos/yolo11.hpp"
 #include "yolos/yolov5.hpp"
+#if defined(BOF_WITH_INFER)
+#include "yolos/yolov5_trt.hpp"
+#endif
 #include "yolos/yolov8.hpp"
 
 namespace auto_aim
@@ -23,6 +27,15 @@ YOLO::YOLO(const std::string & config_path, bool debug)
 
   else if (yolo_name == "yolov5") {
     yolo_ = std::make_unique<YOLOV5>(config_path, debug);
+  }
+
+  else if (yolo_name == "yolov5_trt") {
+#if defined(BOF_WITH_INFER)
+    yolo_ = std::make_unique<YOLOV5_TRT>(config_path, debug);
+#else
+    throw std::runtime_error(
+      "yolov5_trt requires CMake -DBOF_WITH_INFER=ON (CUDA + TensorRT infer library).");
+#endif
   }
 
   else {

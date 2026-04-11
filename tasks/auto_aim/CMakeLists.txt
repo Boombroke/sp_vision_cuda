@@ -6,9 +6,9 @@ find_package(OpenVINO REQUIRED COMPONENTS Runtime)
 
 add_subdirectory(planner/tinympc)
 
-add_library(auto_aim OBJECT 
+set(AUTO_AIM_SRCS
     armor.cpp
-    classifier.cpp 
+    classifier.cpp
     detector.cpp
     solver.cpp
     aimer.cpp
@@ -25,4 +25,15 @@ add_library(auto_aim OBJECT
     planner/planner.cpp
 )
 
-target_link_libraries(auto_aim io openvino::runtime tinympcstatic)
+if(BOF_WITH_INFER)
+  list(APPEND AUTO_AIM_SRCS yolos/yolov5_trt.cpp)
+endif()
+
+add_library(auto_aim OBJECT ${AUTO_AIM_SRCS})
+
+if(BOF_WITH_INFER)
+  target_compile_definitions(auto_aim PUBLIC BOF_WITH_INFER=1)
+  target_link_libraries(auto_aim PUBLIC infer)
+endif()
+
+target_link_libraries(auto_aim PUBLIC io openvino::runtime tinympcstatic)

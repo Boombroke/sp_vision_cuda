@@ -81,10 +81,8 @@ int main(int argc, char * argv[])
 
     solver.set_R_gimbal2world(q);
 
-    // 从串口获取欧拉角
-    // auto gimbal_state = gimbal.state();
-    // Eigen::Vector3d ypr = {gimbal_state.yaw, gimbal_state.pitch, 0};  // 直接从串口获取
-
+    auto gimbal_state = gimbal.state();
+    // 可选：ypr 直接用串口 — Eigen::Vector3d ypr = {gimbal_state.yaw, gimbal_state.pitch, 0};
     Eigen::Vector3d ypr = tools::eulers(solver.R_gimbal2world(), 2, 1, 0);
 
     auto targets = tracker.track(armors, t);

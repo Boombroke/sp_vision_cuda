@@ -1,4 +1,5 @@
-cmake_minimum_required(VERSION 3.16.3)
+# infer 子目录需 3.18+（CUDA 语言、CUDAToolkit）；未开 BOF_WITH_INFER 时其余目标仍按此版本配置
+cmake_minimum_required(VERSION 3.18)
 
 project(sp_vision)
 
@@ -12,8 +13,19 @@ find_package(Eigen3 REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(nlohmann_json REQUIRED)
-set(OpenVINO_DIR "/opt/intel/openvino_2024.6.0/runtime/cmake/")
+# OpenVINO 与 TensorRT 在工程里不互斥，可同时编译进同一构建：
+#   - OpenVINO：始终参与（本行 find_package），供 yolov5 / yolov8 / yolo11 等。
+#   - TensorRT：仅当 BOF_WITH_INFER=ON 时额外加入 libinfer + yolov5_trt。
+# 运行时选后端：改 yaml 里 yolo_name（OpenVINO 系 vs yolov5_trt），无需二选一编译。
+# 若安装路径不同：cmake -DOpenVINO_DIR=.../runtime/cmake 或先 source OpenVINO setupvars.sh。
+set(OpenVINO_DIR "/opt/intel/openvino_2024.6.0/runtime/cmake/" CACHE PATH "OpenVINO CMake 包目录（含 OpenVINOConfig.cmake）")
 find_package(OpenVINO REQUIRED)
+
+# 可选：CUDA+TensorRT；须先于 tasks/auto_aim。另可 -DINFER_BUILD_VIDEO_TEST=ON 编 yolo_video_test
+option(BOF_WITH_INFER "额外编译 TensorRT infer 与 yolov5_trt（与 OpenVINO 可同时开启）" OFF)
+if(BOF_WITH_INFER)
+  add_subdirectory(infer)
+endif()
 
 include_directories(${EIGEN3_INCLUDE_DIR})
 include_directories(${OpenCV_INCLUDE_DIRS})
@@ -81,6 +93,12 @@ add_executable(dm_test tests/dm_test.cpp)
 add_executable(minimum_vision_system tests/minimum_vision_system.cpp)
 
 target_link_libraries(auto_aim_test ${OpenCV_LIBS} fmt::fmt yaml-cpp tools io auto_aim)
+
+if(BOF_WITH_INFER)
+  add_executable(auto_aim_trt_test tests/auto_aim_trt_test.cpp)
+  target_link_libraries(
+    auto_aim_trt_test PRIVATE ${OpenCV_LIBS} fmt::fmt yaml-cpp tools io auto_aim infer)
+endif()
 target_link_libraries(auto_buff_test ${OpenCV_LIBS} fmt::fmt yaml-cpp auto_buff tools io)
 target_link_libraries(camera_detect_test ${OpenCV_LIBS} fmt::fmt yaml-cpp tools auto_aim io)
 target_link_libraries(camera_test ${OpenCV_LIBS} fmt::fmt tools io)
