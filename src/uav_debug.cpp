@@ -1,15 +1,16 @@
+#include <fmt/core.h>
+
 #include <chrono>
+#include <nlohmann/json.hpp>
 #include <opencv2/opencv.hpp>
-#include <thread>
 
 #include "io/camera.hpp"
-#include "io/dm_imu/dm_imu.hpp"
+#include "io/gimbal/gimbal.hpp"
 #include "tasks/auto_aim/aimer.hpp"
-#include "tasks/auto_aim/detector.hpp"
 #include "tasks/auto_aim/shooter.hpp"
 #include "tasks/auto_aim/solver.hpp"
 #include "tasks/auto_aim/tracker.hpp"
-#include "tasks/auto_aim/yolo.hpp"
+#include "tasks/auto_aim/yolos/yolov5_trt.hpp"
 #include "tools/exiter.hpp"
 #include "tools/img_tools.hpp"
 #include "tools/logger.hpp"
@@ -37,11 +38,10 @@ int main(int argc, char * argv[])
   tools::Recorder recorder;
 
   io::Camera camera(config_path);
-  io::CBoard cboard(config_path);
+  io::Gimbal gimbal(config_path);
 
-  auto_aim::Detector detector(config_path);
   auto_aim::Solver solver(config_path);
-  auto_aim::YOLO yolo(config_path);
+  auto_aim::YOLOV5_TRT yolo(config_path, true);
   auto_aim::Tracker tracker(config_path, solver);
   auto_aim::Aimer aimer(config_path);
   auto_aim::Shooter shooter(config_path);
@@ -50,38 +50,48 @@ int main(int argc, char * argv[])
   Eigen::Quaterniond q;
   std::chrono::steady_clock::time_point t;
 
-  auto mode = io::Mode::idle;
-  auto last_mode = io::Mode::idle;
+  auto mode = io::GimbalMode::IDLE;
+  auto last_mode = io::GimbalMode::IDLE;
 
-  auto t0 = std::chrono::steady_clock::now();
-
+  int frame_count = 0;
   while (!exiter.exit()) {
+    auto t0 = std::chrono::steady_clock::now();
     camera.read(img, t);
-    q = cboard.imu_at(t - 1ms);
-    mode = cboard.mode;
+    q = gimbal.q(t - 1ms);
+    mode = gimbal.mode();
+    auto gimbal_state = gimbal.state();
     // recorder.record(img, q, t);
     if (last_mode != mode) {
-      tools::logger()->info("Switch to {}", io::MODES[mode]);
+      tools::logger()->info("Switch to {}", gimbal.str(mode));
       last_mode = mode;
     }
 
     /// 自瞄
     solver.set_R_gimbal2world(q);
-
     Eigen::Vector3d ypr = tools::eulers(solver.R_gimbal2world(), 2, 1, 0);
 
-    auto armors = detector.detect(img);
+    auto yolo_start = std::chrono::steady_clock::now();
+    auto armors = yolo.detect(img, frame_count++);
 
+    auto tracker_start = std::chrono::steady_clock::now();
     auto targets = tracker.track(armors, t);
 
-    auto command = aimer.aim(targets, t, cboard.bullet_speed);
+    auto aimer_start = std::chrono::steady_clock::now();
+    auto command = aimer.aim(targets, t, gimbal_state.bullet_speed);
 
     command.shoot = shooter.shoot(command, aimer, targets, ypr);
 
-    cboard.send(command);
+    gimbal.send(
+      command.control, command.shoot, command.yaw, 0, 0, command.pitch, 0, 0);
 
     /// debug
     tools::draw_text(img, fmt::format("[{}]", tracker.state()), {10, 30}, {255, 255, 255});
+    auto finish = std::chrono::steady_clock::now();
+    tools::logger()->info(
+      "yolo: {:.1f}ms, tracker: {:.1f}ms, aimer: {:.1f}ms",
+      tools::delta_time(tracker_start, yolo_start) * 1e3,
+      tools::delta_time(aimer_start, tracker_start) * 1e3,
+      tools::delta_time(finish, aimer_start) * 1e3);
 
     nlohmann::json data;
     data["t"] = tools::delta_time(std::chrono::steady_clock::now(), t0);
@@ -153,9 +163,12 @@ int main(int argc, char * argv[])
     }
 
     // 云台响应情况
-    data["gimbal_yaw"] = ypr[0] * 57.3;
-    data["gimbal_pitch"] = ypr[1] * 57.3;
-    data["bullet_speed"] = cboard.bullet_speed;
+    data["gimbal_yaw"] = gimbal_state.yaw * 57.3;
+    data["gimbal_pitch"] = gimbal_state.pitch * 57.3;
+    data["gimbal_yaw_vel"] = gimbal_state.yaw_vel;
+    data["gimbal_pitch_vel"] = gimbal_state.pitch_vel;
+    data["bullet_speed"] = gimbal_state.bullet_speed;
+    data["bullet_count"] = gimbal_state.bullet_count;
     if (command.control) {
       data["cmd_yaw"] = command.yaw * 57.3;
       data["cmd_pitch"] = command.pitch * 57.3;
@@ -168,6 +181,8 @@ int main(int argc, char * argv[])
     auto key = cv::waitKey(1);
     if (key == 'q') break;
   }
+
+  gimbal.send(false, false, 0, 0, 0, 0, 0, 0);
 
   return 0;
 }
