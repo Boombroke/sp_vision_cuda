@@ -8,8 +8,14 @@ using namespace std::chrono_literals;
 
 namespace io
 {
-HikRobot::HikRobot(double exposure_ms, double gain, const std::string & vid_pid)
-: exposure_us_(exposure_ms * 1e3), gain_(gain), queue_(1), daemon_quit_(false), vid_(-1), pid_(-1)
+HikRobot::HikRobot(double exposure_ms, double gain, const std::string & vid_pid, bool rotate_180)
+: exposure_us_(exposure_ms * 1e3),
+  gain_(gain),
+  rotate_180_(rotate_180),
+  queue_(1),
+  daemon_quit_(false),
+  vid_(-1),
+  pid_(-1)
 {
   set_vid_pid(vid_pid);
   if (libusb_init(NULL)) tools::logger()->warn("Unable to init libusb!");
@@ -140,6 +146,7 @@ void HikRobot::capture_start()
         {PixelType_Gvsp_BayerBG8, cv::COLOR_BayerBG2RGB}};
       cv::cvtColor(img, dst_image, type_map.at(pixel_type));
       img = dst_image;
+      if (rotate_180_) cv::rotate(img, img, cv::ROTATE_180);
 
       queue_.push({img, timestamp});
 
