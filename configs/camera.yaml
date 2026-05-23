@@ -4,7 +4,7 @@
 # vid_pid: "f622:d13a"
 
 camera_name: "hikrobot"
-exposure_ms: 12
-gain: 30.0
+exposure_ms: 3
+gain: 16.9
 vid_pid: "2bdf:0001"
 rotate_180: false

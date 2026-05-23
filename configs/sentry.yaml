@@ -8,7 +8,7 @@ classify_model: assets/tiny_resnet.onnx
 yolo11_model_path: assets/yolo11.xml
 yolov8_model_path: assets/yolov8.xml
 yolov5_model_path: assets/yolov5.xml
-device: GPU
+device: CPU
 min_confidence: 0.8
 use_traditional: true
 
@@ -35,7 +35,7 @@ usb_gain: 10 #0-96
 
 #####-----工业相机参数-----#####
 camera_name: "hikrobot"
-exposure_ms: 0.8
+exposure_ms: 6.0
 gain: 16.9
 vid_pid: "2bdf:0001"
 
@@ -60,37 +60,62 @@ can_interface: "can0"
 #####-----tracker参数-----#####
 min_detect_count: 5
 max_temp_lost_count: 25
-outpost_max_temp_lost_count: 75
+outpost_max_temp_lost_count: 150
+nis_thresh: 0.4 # 默认 NIS 失败比例阈值，超过则判 lost
+outpost_nis_thresh: 0.7 # 前哨站 NIS 阈值（强约束下 PnP 残差易触发 NIS，放宽）
+lost_timeout: 0.5 # s, dt 超过此值才判 lost（容忍短暂遮挡）
+outpost_w_clamp: 2.51 # rad/s, 前哨站 sign(w) 锁定后的钳位幅值（规则 0.4Hz≈2.513）
 
 #####-----aimer参数-----#####
-yaw_offset: -0.8 # degree -2.5
-pitch_offset: -1  # degree 2
-comming_angle: 60 # degree
-leaving_angle: 20 # degree
-left_yaw_offset: -1
-right_yaw_offset: -0.6
+yaw_offset: 3.0 # degree -2.5
+pitch_offset: 0.0  # degree 2
+comming_angle: 50 # degree
+leaving_angle: 15 # degree
+outpost_coming_angle: 90 # degree, 前哨站专属：板转过来时进入选板的最大偏角
+outpost_leaving_angle: 50 # degree, 前哨站专属：板转走时退出选板的角度
 decision_speed: 10 # rad/s
-high_speed_delay_time: 0.026 # s
-low_speed_delay_time: 0.010 # s
+high_speed_delay_time: 0.12 # s（原 0.5 是 bug，导致高速时预测到下一块板乱飞）
+low_speed_delay_time: 0.12 # s
 
 #####-----shooter参数-----#####
-first_tolerance: 5 # 近距离射击容差，degree
-second_tolerance: 2 # 远距离射击容差，degree
+first_tolerance: 3.0 # 近距离射击容差，degree（放宽换弹频）
+second_tolerance: 2.0 # 远距离射击容差，degree
 judge_distance: 3 #距离判断阈值
 auto_fire: true # 是否由自瞄控制射击
+cmd_stable_window: 5 # shooter cmd 稳态窗口（帧），抑制高速小陀螺 cmd 跳变带来的喷水
+cmd_stable_thresh: 4.0 # degree, 窗口内 cmd 最大跳变阈值
 
 #####-----decider参数-----#####
 mode: 1
 
 #####-----工业相机标定参数-----#####
-R_gimbal2imubody: [1, 0, 0, 0, 1, 0, 0, 0, 1]
+R_gimbal2imubody: [-1, 0, 0, 0, -1, 0, 0, 0, 1]
 
-# 重投影误差: 0.1833px
-camera_matrix: [2414.9359264386621, 0, 717.26243105567414, 0, 2418.0489262208148, 582.68540529942845, 0, 0, 1]
-distort_coeffs: [-0.0209453389287673, 0.15028138841073832, -0.0006517722113234505, -0.0016861906197686788, 0]
 
-# 相机同理想情况的偏角: yaw-1.11 pitch0.01 roll-0.06 degree
-# 标定板到世界坐标系原点的水平距离: 1.20 m
-# 标定板同竖直摆放时的偏角: yaw123.89 pitch14.05 roll-0.86 degree
-R_camera2gimbal: [0.01928451708725664, 0.00012696140743255463, 0.99981402834802846, -0.99981344688553653, -0.0010834913551969569, 0.019284643459122196, 0.0010857382619952124, -0.99999940496346484, 0.00010604311483339372]
-t_camera2gimbal: [0.13089617453251859, 0.0038468007459533785, 0.094139945222010288]
+# 重投影误差: 0.0514px
+camera_matrix: [1858.6294533173059, 0, 718.20875966181677, 0, 1855.7942484007674, 570.50084265864928, 0, 0, 1]
+distort_coeffs: [-0.061881751463666021, 0.14334414883522373, 0.00089326148533244503, 0.00027194233619169179, 0]
+
+# 相机同理想情况的偏角: yaw3.61 pitch-0.16 roll0.33 degree
+# 标定板到世界坐标系原点的水平距离: 3.49 m
+# 标定板同竖直摆放时的偏角: yaw-16.37 pitch9.20 roll0.30 degree
+R_camera2gimbal: [-0.06289712948639567, -0.0024851448715494384, 0.99801692127806063, -0.99800381701489571, 0.0058540313375030628, -0.062881726604775423, -0.0056861521321336927, -0.99997977698154794, -0.0028483858346936841]
+t_camera2gimbal: [0.0075708453067452434, 0.0022004406609048843, 0.051187257656726722]
+
+
+#####-----buff_detector参数-----#####
+model: "assets/yolo11_buff_int8.xml"  
+
+#####-----buff_aimer参数-----#####
+fire_gap_time: 0.700   # s
+predict_time: 0.120    # s
+
+#####-----gimbal参数-----#####
+com_port: "/dev/ttyACM1"
+record_serial_raw: false # 串口字节级 raw dump 开关，开启后写入 records/<时间戳>_rx.bin / _tx.bin
+record_video: true # 视频+四元数录制开关，写入 records/<时间戳>.avi / .txt
+record_signals: false # 是否把 EKF/cmd/Tracker 等中间量写 records/*.jsonl
+yaw_kp: 0
+yaw_kd: 0
+pitch_kp: 0
+pitch_kd: 0

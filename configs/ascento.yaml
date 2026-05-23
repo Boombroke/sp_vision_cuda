@@ -35,13 +35,19 @@ min_confidence: 0.8
 #####-----tracker参数-----#####
 min_detect_count: 5
 max_temp_lost_count: 15
-outpost_max_temp_lost_count: 75
+outpost_max_temp_lost_count: 150
+nis_thresh: 0.4 # 默认 NIS 失败比例阈值
+outpost_nis_thresh: 0.7 # 前哨站 NIS 阈值
+lost_timeout: 0.5 # s, dt 超过此值才判 lost
+outpost_w_clamp: 2.51 # rad/s, 前哨站 sign(w) 锁定后的钳位幅值
 
 #####-----aimer参数-----#####
 yaw_offset: 1.5 # degree
 pitch_offset: -0.5 # degree
 comming_angle: 60 # degree
 leaving_angle: 20 # degree
+outpost_coming_angle: 90 # degree, 前哨站专属
+outpost_leaving_angle: 50 # degree, 前哨站专属
 decision_speed: 7 # rad/s
 high_speed_delay_time: 0.050 # s
 low_speed_delay_time: 0.015 # s
@@ -51,6 +57,8 @@ first_tolerance: 100 # 近距离射击容差，degree
 second_tolerance: 100 # 远距离射击容差，degree
 judge_distance: 2 #距离判断阈值
 auto_fire: true # 是否由自瞄控制射击
+cmd_stable_window: 5 # shooter cmd 稳态窗口（帧），抑制高速小陀螺 cmd 跳变带来的喷水
+cmd_stable_thresh: 4.0 # degree, 窗口内 cmd 最大跳变阈值
 
 camera_name: "hikrobot"
 exposure_ms: 2
@@ -76,6 +84,9 @@ can_interface: "can0"
 
 #####-----gimbal参数-----#####
 com_port: "/dev/gimbal"
+record_serial_raw: false # 串口字节级 raw dump 开关，开启后写入 records/<时间戳>_rx.bin / _tx.bin
+record_video: true # 视频+四元数录制开关，写入 records/<时间戳>.avi / .txt
+record_signals: false # 是否把 EKF/cmd/Tracker 等中间量写 records/*.jsonl
 
 #####-----buff_detector参数-----#####
 model: "assets/yolo11_buff_int8.xml"
