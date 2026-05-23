@@ -81,6 +81,11 @@ private:
   Eigen::Vector3d h_armor_xyz(const Eigen::VectorXd & x, int id) const;
   // 
   Eigen::MatrixXd h_jacobian(const Eigen::VectorXd & x, int id) const;
+
+  double getoutpost_armor_z(int id, const Eigen::VectorXd x) const
+  {
+    return (id == 0) ? x[4] : (id == 1) ? x[4] + x[9] : (id == 2) ? x[4] + x[10] : x[4];
+  }
 };
 
 }  // namespace auto_aim

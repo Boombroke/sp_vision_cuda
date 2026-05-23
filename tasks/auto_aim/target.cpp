@@ -101,13 +101,17 @@ void Target::predict(double dt)
   
   // Piecewise White Noise Model
   // https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python/blob/master/07-Kalman-Filter-Math.ipynb
-  double v1, v2;
+  double v1, v2, q_l, q_h;
   if (name == ArmorName::outpost) {
     v1 = 10;   // 前哨站加速度方差
     v2 = 0.1;  // 前哨站角加速度方差
+    q_l = 1;   // 前哨站高度差1的过程噪声
+    q_h = 1;   // 前哨站高度差2的过程噪声
   } else {
     v1 = 100;  // 加速度方差
     v2 = 400;  // 角加速度方差
+    q_l = 0;
+    q_h = 0;
   }
   auto a = dt * dt * dt * dt / 4;
   auto b = dt * dt * dt / 2;
@@ -127,8 +131,8 @@ void Target::predict(double dt)
     {     0,      0,      0,      0,      0,      0, a * v2, b * v2, 0, 0, 0},
     {     0,      0,      0,      0,      0,      0, b * v2, c * v2, 0, 0, 0},
     {     0,      0,      0,      0,      0,      0,      0,      0, 0, 0, 0},
-    {     0,      0,      0,      0,      0,      0,      0,      0, 0, 0, 0},
-    {     0,      0,      0,      0,      0,      0,      0,      0, 0, 0, 0}
+    {     0,      0,      0,      0,      0,      0,      0,      0, 0, q_l, 0},
+    {     0,      0,      0,      0,      0,      0,      0,      0, 0, 0, q_h}
   };
   // clang-format on
 
@@ -277,9 +281,16 @@ std::vector<Eigen::Vector4d> Target::armor_xyza_list() const
 bool Target::diverged() const
 {
   auto r_ok = ekf_.x[8] > 0.05 && ekf_.x[8] < 0.5;
-  auto l_ok = ekf_.x[8] + ekf_.x[9] > 0.05 && ekf_.x[8] + ekf_.x[9] < 0.5;
 
-  if (r_ok && l_ok) return false;
+  if (name == ArmorName::outpost) {
+  // 前哨站：检查高度差是否合理
+    auto dz1_ok = std::abs(ekf_.x[9]) < 0.5;
+    auto dz2_ok = std::abs(ekf_.x[10]) < 0.5;
+    if (r_ok && dz1_ok && dz2_ok) return false;
+  } else {
+    auto l_ok = ekf_.x[8] + ekf_.x[9] > 0.05 && ekf_.x[8] + ekf_.x[9] < 0.5;
+    if (r_ok && l_ok) return false;
+  }
 
   tools::logger()->debug("[Target] r={:.3f}, l={:.3f}", ekf_.x[8], ekf_.x[9]);
   return true;
@@ -305,11 +316,12 @@ Eigen::Vector3d Target::h_armor_xyz(const Eigen::VectorXd & x, int id) const
 {
   auto angle = tools::limit_rad(x[6] + id * 2 * CV_PI / armor_num_);
   auto use_l_h = (armor_num_ == 4) && (id == 1 || id == 3);
+  auto outpost = armor_num_ == 3;
 
   auto r = (use_l_h) ? x[8] + x[9] : x[8];
   auto armor_x = x[0] - r * std::cos(angle);
   auto armor_y = x[2] - r * std::sin(angle);
-  auto armor_z = (use_l_h) ? x[4] + x[10] : x[4];
+  auto armor_z = (outpost) ? getoutpost_armor_z(id, x) : (use_l_h) ? x[4] + x[10] : x[4];
 
   return {armor_x, armor_y, armor_z};
 }
@@ -320,6 +332,7 @@ Eigen::MatrixXd Target::h_jacobian(const Eigen::VectorXd & x, int id) const
 {
   auto angle = tools::limit_rad(x[6] + id * 2 * CV_PI / armor_num_);
   auto use_l_h = (armor_num_ == 4) && (id == 1 || id == 3);
+  auto outpost = armor_num_ == 3;
 
   auto r = (use_l_h) ? x[8] + x[9] : x[8];
   auto dx_da = r * std::sin(angle);
@@ -331,12 +344,14 @@ Eigen::MatrixXd Target::h_jacobian(const Eigen::VectorXd & x, int id) const
   auto dy_dl = (use_l_h) ? -std::sin(angle) : 0.0;
 
   auto dz_dh = (use_l_h) ? 1.0 : 0.0;
+  auto dz_dl_outpost = (outpost && id == 1) ? 1.0 : 0.0;
+  auto dz_dh_outpost = (outpost && id == 2) ? 1.0 : 0.0;
 
   // clang-format off
   Eigen::MatrixXd H_armor_xyza{
     {1, 0, 0, 0, 0, 0, dx_da, 0, dx_dr, dx_dl,     0},
     {0, 0, 1, 0, 0, 0, dy_da, 0, dy_dr, dy_dl,     0},
-    {0, 0, 0, 0, 1, 0,     0, 0,     0,     0, dz_dh},
+    {0, 0, 0, 0, 1, 0,     0, 0,     0,     dz_dl_outpost, dz_dh_outpost + dz_dh},
     {0, 0, 0, 0, 0, 0,     1, 0,     0,     0,     0}
   };
   // clang-format on
