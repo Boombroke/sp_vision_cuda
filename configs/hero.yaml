@@ -1,0 +1,126 @@
+# enemy_color: "red"
+enemy_color: "blue"
+
+
+#####-----神经网络参数-----#####
+yolo_name: yolov5
+classify_model: assets/tiny_resnet.onnx
+yolo11_model_path: assets/yolo11.xml
+yolov8_model_path: assets/yolov8.xml
+yolov5_model_path: assets/yolov5.xml
+device: CPU
+min_confidence: 0.8
+use_traditional: true
+
+#####-----ROI-----#####
+roi: 
+  x: 420
+  y: 50
+  width: 600
+  height: 600
+
+use_roi: false
+
+#####-----USB相机参数-----#####
+image_width: 1280
+image_height: 720
+fov_h: 57.7 #87.7
+fov_v: 56.7 
+new_fov_h: 27 #67
+new_fov_v: 40.9
+usb_frame_rate: 120
+usb_exposure: 500 #1-80000______250
+usb_gamma: 160
+usb_gain: 10 #0-96
+
+#####-----工业相机参数-----#####
+camera_name: "hikrobot"
+exposure_ms: 2.0
+gain: 16.9
+vid_pid: "2bdf:0001"
+
+#####-----传统方法参数-----#####
+threshold: 150
+max_angle_error: 45 # degree
+min_lightbar_ratio: 1.5
+max_lightbar_ratio: 20
+min_lightbar_length: 8
+min_armor_ratio: 1
+max_armor_ratio: 5
+max_side_ratio: 1.5
+max_rectangular_error: 25 # degree
+min_confidence: 0.8
+
+#####-----cboard参数-----#####
+quaternion_canid: 0x01
+bullet_speed_canid: 0x110
+send_canid: 0xff
+can_interface: "can0"
+
+#####-----tracker参数-----#####
+min_detect_count: 5
+max_temp_lost_count: 25
+outpost_max_temp_lost_count: 150
+nis_thresh: 0.4 # 默认 NIS 失败比例阈值
+outpost_nis_thresh: 0.7 # 前哨站 NIS 阈值
+lost_timeout: 0.5 # s, dt 超过此值才判 lost
+outpost_w_clamp: 2.51 # rad/s, 前哨站 sign(w) 锁定后的钳位幅值
+
+#####-----aimer参数（HeroAimer 共用 yaw_offset / pitch_offset）-----#####
+yaw_offset: 0 # degree -2.5
+pitch_offset: 0  # degree 2
+comming_angle: 60 # degree
+leaving_angle: 20 # degree
+outpost_coming_angle: 90 # degree, 前哨站专属
+outpost_leaving_angle: 50 # degree, 前哨站专属
+decision_speed: 10 # rad/s
+high_speed_delay_time: 0.026 # s
+low_speed_delay_time: 0.010 # s
+
+#####-----hero_aimer参数-----#####
+shoot_delay: 0.05
+max_fire_error_yaw: 0.08      # rad, 高速分支稳态判定阈值
+max_fire_error_pitch: 0.08    # rad
+max_shoot_angle: 30
+center_mode_w_threshold: 8.0  # rad/s, 超过此值切换"瞄中心等板转过来"模式
+gimbal_yaw_tau: 0.15          # s, yaw 云台一阶响应时间常数（实测后改）
+gimbal_pitch_tau: 0.20        # s, pitch 云台一阶响应时间常数（实测后改）
+cmd_smooth_tau: 0.30          # s, cmd 低通时间常数 (~2x gimbal_tau)
+fire_pos_window: 0.05         # rad, 板位置进瞄准方向的角度窗
+fire_facing_window: 0.40      # rad ≈ 23°, 板法线偏离视线最大角（防侧倾跳弹）
+fire_steady_frames: 5         # 连续 N 帧云台稳态才允许开火
+
+#####-----shooter参数-----#####
+first_tolerance: 5 # 近距离射击容差，degree
+second_tolerance: 2 # 远距离射击容差，degree
+judge_distance: 3 #距离判断阈值
+auto_fire: true # 是否由自瞄控制射击
+cmd_stable_window: 5 # shooter cmd 稳态窗口（帧），抑制高速小陀螺 cmd 跳变带来的喷水
+cmd_stable_thresh: 4.0 # degree, 窗口内 cmd 最大跳变阈值
+
+#####-----decider参数-----#####
+mode: 1
+
+#####-----工业相机标定参数-----#####
+R_gimbal2imubody: [-1, 0, 0, 0, -1, 0, 0, 0, 1]
+
+# 重投影误差: 0.0405px
+camera_matrix: [1845.9041709418927, 0, 724.18573037531303, 0, 1842.8224804927008, 538.40728208331586, 0, 0, 1]
+distort_coeffs: [-0.087838630224360295, 0.1711999070305476, 0.001457009192556087, -0.0026535149583560213, 0]
+
+# 相机同理想情况的偏角: yaw-1.07 pitch-0.88 roll0.43 degree
+# 标定板到世界坐标系原点的水平距离: 3.75 m
+# 标定板同竖直摆放时的偏角: yaw48.07 pitch11.75 roll0.73 degree
+R_camera2gimbal: [0.018524585346856141, -0.01552817398648868, 0.99970781508917506, -0.99979992875488288, 0.007258696163871925, 0.018639039453028802, -0.0075460055299481077, -0.99985308277898799, -0.015390602908790289]
+t_camera2gimbal: [-0.26254259376574302, -0.020358828043377221, 0.1232977667062649]
+
+
+#####-----gimbal参数-----#####
+com_port: "/dev/ttyACM0"
+record_serial_raw: false # 串口字节级 raw dump 开关，开启后写入 records/<时间戳>_rx.bin / _tx.bin
+record_video: true # 视频+四元数录制开关，写入 records/<时间戳>.avi / .txt
+record_signals: false # 是否把 EKF/cmd/Tracker 等中间量写 records/*.jsonl
+yaw_kp: 0
+yaw_kd: 0
+pitch_kp: 0
+pitch_kd: 0

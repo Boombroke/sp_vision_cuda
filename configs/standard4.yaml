@@ -1,5 +1,5 @@
+# enemy_color: "red"
 enemy_color: "red"
-# enemy_color: "blue"
 
 #####-----神经网络参数-----#####
 yolo_name: yolov5
@@ -9,7 +9,7 @@ yolov8_model_path: assets/yolov8.xml
 yolov5_model_path: assets/yolov5.xml
 device: GPU
 min_confidence: 0.8
-use_traditional: true
+use_traditional: false
 
 #####-----ROI-----#####
 roi: 
@@ -21,7 +21,7 @@ roi:
 use_roi: false
 
 #####-----传统方法参数-----#####
-threshold: 150
+threshold: 130
 max_angle_error: 45 # degree
 min_lightbar_ratio: 1.5
 max_lightbar_ratio: 20
@@ -35,41 +35,53 @@ min_confidence: 0.8
 #####-----tracker参数-----#####
 min_detect_count: 5
 max_temp_lost_count: 15
-outpost_max_temp_lost_count: 75
+outpost_max_temp_lost_count: 150
+nis_thresh: 0.4 # 默认 NIS 失败比例阈值
+outpost_nis_thresh: 0.7 # 前哨站 NIS 阈值
+lost_timeout: 0.5 # s, dt 超过此值才判 lost
+outpost_w_clamp: 2.51 # rad/s, 前哨站 sign(w) 锁定后的钳位幅值
 
 #####-----aimer参数-----#####
-yaw_offset: -2 # degree -2.5
-pitch_offset: 0 # degree 2
-comming_angle: 60 # degree
-leaving_angle: 20 # degree
-decision_speed: 8 # rad/s
-high_speed_delay_time: 0.015 # s
-low_speed_delay_time: 0.015 # s
+yaw_offset: 0.0 # degree -2.5
+pitch_offset: -5.1 # degree 2
+# 已回退选板锁定，迭代重选板时 cmd 会有 ~9° 跳变，coming/leaving 维持 70/25
+comming_angle: 70 # degree
+leaving_angle: 25 # degree
+outpost_coming_angle: 90 # degree, 前哨站专属
+outpost_leaving_angle: 50 # degree, 前哨站专属
+decision_speed: 5 # rad/s
+# delay_time = vision 链路延迟 + 发射延迟（实测发射延迟 ~60ms + vision ~70ms = 0.13s）
+# 慢/高速小陀螺都验证 0.13 命中准，统一保持
+high_speed_delay_time: 0.10 # s
+low_speed_delay_time: 0.10 # s
 
 #####-----shooter参数-----#####
-first_tolerance: 3 # 近距离射击容差，degree
-second_tolerance: 2 # 远距离射击容差，degree
-judge_distance: 2 #距离判断阈值
+# 已回退选板锁定，cmd 会有 ~9° 跳变；平移稳态滞后 ~4°
+# 容差恢复到 6/4.5 容纳 cmd 跳变 + 滞后
+first_tolerance: 6.0 # 近距离射击容差，degree
+second_tolerance: 4.5 # 远距离射击容差，degree
+judge_distance: 5 # m, 距离判断阈值（5m 内全用 first 的更宽容差）
 auto_fire: true # 是否由自瞄控制射击
+cmd_stable_window: 5 # shooter cmd 稳态窗口（帧），抑制高速小陀螺 cmd 跳变带来的喷水
+cmd_stable_thresh: 4.0 # degree, 窗口内 cmd 最大跳变阈值
 
 camera_name: "hikrobot"
-exposure_ms: 2
+exposure_ms: 4.5
 gain: 16
 vid_pid: "2bdf:0001"
 
-#  1  0  0
-#  0  1  0
+# -1  0  0
+#  0 -1  0
 #  0  0  1
+R_gimbal2imubody: [-1, 0, 0, 0, -1, 0, 0, 0, 1]
 
-R_gimbal2imubody: [1, 0, 0, 0, 1, 0, 0, 0, 1]
+# 重投影误差: 0.0519px
+camera_matrix: [1716.0439287419817, 0, 706.85914579736311, 0, 1720.3587605834095, 511.69992797656141, 0, 0, 1]
+distort_coeffs: [-0.07086441264647772, 0.096752675097347432, -0.0038769106953921257, 0.00022872543782987318, 0]
 
-# 重投影误差: 0.3145px
-camera_matrix: [1851.7070167840545, 0, 721.12585328714192, 0, 1851.8175594364079, 571.69879709276688, 0, 0, 1]
-distort_coeffs: [-0.093662536083526302, 0.18945726820633155, -0.00040424349861928674, -0.0040568403852123142, 0]
-
-# 相机同理想情况的偏角: yaw-1.61 pitch-0.82 roll-0.61 degree
-R_camera2gimbal: [0.02823004230930648, -0.014076983590428133, 0.99950232778328707, -0.99954530259354468, -0.010995644138609872, 0.028076393521179785, 0.010594940981141165, -0.99984045444409364, -0.014380990321749998]
-t_camera2gimbal: [0.045517325957791413, 0.10544338092767802, 0.034649710880185793]
+# 相机同理想情况的偏角: yaw0.00 pitch3.16 roll1.89 degree
+R_camera2gimbal: [0.0018112855417369289, 0.055039535723014066, 0.99848253302302747, -0.99945426337784626, 0.033032943473073839, -7.8327013044998672e-06, -0.032983248180444513, -0.99793761035091744, 0.055069330725617593]
+t_camera2gimbal: [0.048019663874266948, -0.026595470643651496, 0.15204745699937247]
 
 #####-----cboard参数-----#####
 quaternion_canid: 0x100
@@ -78,7 +90,10 @@ send_canid: 0xff
 can_interface: "can0"
 
 #####-----gimbal参数-----#####
-com_port: "/dev/gimbal"
+com_port: "/dev/ttyACM0"
+record_serial_raw: false # 串口字节级 raw dump 开关，开启后写入 records/<时间戳>_rx.bin / _tx.bin
+record_video: true # 视频+四元数录制开关，写入 records/<时间戳>.avi / .txt
+record_signals: false # 是否把 EKF/cmd/Tracker 等中间量写 records/*.jsonl
 
 #####-----planner-----#####
 fire_thresh: 0.003
@@ -92,8 +107,31 @@ Q_pitch: [9e6,0]
 R_pitch: [1]
 
 #####-----buff_detector参数-----#####
-model: "assets/yolo11_buff_int8.xml"
+detect:
+  contrast: 1
+  brightness: 
+    blue: -120
+    red: -100
+  brightness_threshold:
+    blue: 120
+    red: 40
+  morphology_size:
+    blue: 3
+    red: 3
+  dilate_size: 2
+  # canny_low_threshold: 100
+  # canny_high_threshold: 180
+  # approx_epsilon: 1.0
+  R_contours_min_area: 200
+  R_contours_max_area: 600
+  fanblades_head_contours_min_area: 3000
+  fanblades_head_contours_max_area: 8000
+  fanblades_body_contours_min_area: 1000
+  fanblades_body_contours_max_area: 4000
+  standard_fanblade_path: ./assets/standard_fanblade.jpg
 
 #####-----buff_aimer参数-----#####
-fire_gap_time: 0.520   # s
-predict_time: 0.100     # s
+aim_time: 0.150         # s
+wait_time: 0.300        # s
+command_fire_gap: 0.080 # s
+predict_time: 0.150     # s
