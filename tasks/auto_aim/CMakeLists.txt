@@ -12,6 +12,7 @@ set(AUTO_AIM_SRCS
     detector.cpp
     solver.cpp
     aimer.cpp
+    hero_aimer.cpp
     target.cpp
     tracker.cpp
     voter.cpp
