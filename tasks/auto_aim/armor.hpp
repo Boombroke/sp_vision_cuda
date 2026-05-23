@@ -24,9 +24,10 @@ const std::vector<std::string> COLORS = {"red", "blue", "extinguish", "purple"};
 enum ArmorType
 {
   big,
-  small
+  small,
+  building
 };
-const std::vector<std::string> ARMOR_TYPES = {"big", "small"};
+const std::vector<std::string> ARMOR_TYPES = {"big", "small", "building"};
 
 
 // 装甲板 名字 枚举
@@ -66,9 +67,9 @@ const std::vector<std::tuple<Color, ArmorName, ArmorType>> armor_properties = {
   {blue, three, small},      {red, three, small},      {extinguish, three, small},
   {blue, four, small},       {red, four, small},       {extinguish, four, small},
   {blue, five, small},       {red, five, small},       {extinguish, five, small},
-  {blue, outpost, small},    {red, outpost, small},    {extinguish, outpost, small},
-  {blue, base, big},         {red, base, big},         {extinguish, base, big},      {purple, base, big},       
-  {blue, base, small},       {red, base, small},       {extinguish, base, small},    {purple, base, small},    
+  {blue, outpost, building}, {red, outpost, building}, {extinguish, outpost, building},
+  {blue, base, building},    {red, base, building},    {extinguish, base, building},  {purple, base, building},
+  {blue, base, building},    {red, base, building},    {extinguish, base, building},  {purple, base, building},
   {blue, three, big},        {red, three, big},        {extinguish, three, big}, 
   {blue, four, big},         {red, four, big},         {extinguish, four, big},  
   {blue, five, big},         {red, five, big},         {extinguish, five, big}};
