@@ -129,11 +129,16 @@ Eigen::Vector2d Decider::delta_angle(
   }
 }
 
-bool Decider::armor_filter(std::list<auto_aim::Armor> & armors)
+bool Decider::armor_filter(
+  std::list<auto_aim::Armor> & armors, int enemy_color)
 {
   if (armors.empty()) return true;
-  // 过滤非敌方装甲板
-  armors.remove_if([&](const auto_aim::Armor & a) { return a.color != enemy_color_; });
+
+  // 默认按yaml过滤；传入0/1时使用传入颜色，其他值回退yaml
+  auto_aim::Color filter_color = (enemy_color == 0)
+                                   ? auto_aim::Color::red
+                                   : (enemy_color == 1) ? auto_aim::Color::blue : enemy_color_;
+  armors.remove_if([&](const auto_aim::Armor & a) { return a.color != filter_color; });
 
   // 25赛季没有5号装甲板
   armors.remove_if([&](const auto_aim::Armor & a) { return a.name == auto_aim::ArmorName::five; });

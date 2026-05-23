@@ -104,7 +104,7 @@ int main(int argc, char * argv[])
     /// 自瞄
     if (mode.load() == io::GimbalMode::AUTO_AIM) {
       auto armors = yolo.detect(img);
-      auto targets = tracker.track(armors, t);
+      auto targets = tracker.track(armors, t, gs.enemy_color);
       if (!targets.empty())
         target_queue.push(targets.front());
       else

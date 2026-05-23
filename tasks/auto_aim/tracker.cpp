@@ -35,7 +35,7 @@ std::string Tracker::state() const { return state_; }
 std::list<Target> Tracker::track(
   std::list<Armor> & armors, 
   std::chrono::steady_clock::time_point t, 
-  bool use_enemy_color)
+  int enemy_color)
 {
   // 时间间隔
   auto dt = tools::delta_time(t, last_timestamp_);
@@ -47,9 +47,10 @@ std::list<Target> Tracker::track(
     state_ = "lost";
   }
 
-  // 这边过滤真有问题吧 ？？？
-  // 过滤掉非我方装甲板
-  armors.remove_if([&](const auto_aim::Armor & a) { return a.color != enemy_color_; });
+  // 默认按yaml过滤；传入0/1时使用传入颜色，其他值回退yaml
+  Color filter_color =
+    (enemy_color == 0) ? Color::red : (enemy_color == 1) ? Color::blue : enemy_color_;
+  armors.remove_if([&](const auto_aim::Armor & a) { return a.color != filter_color; });
 
   // 过滤前哨站顶部装甲板
   // armors.remove_if([this](const auto_aim::Armor & a) {
@@ -114,7 +115,7 @@ std::list<Target> Tracker::track(
 // 全向感知 tracker
 std::tuple<omniperception::DetectionResult, std::list<Target>> Tracker::track(
   const std::vector<omniperception::DetectionResult> & detection_queue, std::list<Armor> & armors,
-  std::chrono::steady_clock::time_point t, bool use_enemy_color)
+  std::chrono::steady_clock::time_point t, int enemy_color)
 {
   omniperception::DetectionResult switch_target{std::list<Armor>(), t, 0, 0};
   omniperception::DetectionResult temp_target{std::list<Armor>(), t, 0, 0};
@@ -130,6 +131,11 @@ std::tuple<omniperception::DetectionResult, std::list<Target>> Tracker::track(
     tools::logger()->warn("[Tracker] Large dt: {:.3f}s", dt);
     state_ = "lost";
   }
+
+  // 默认按yaml过滤；传入0/1时使用传入颜色，其他值回退yaml
+  Color filter_color =
+    (enemy_color == 0) ? Color::red : (enemy_color == 1) ? Color::blue : enemy_color_;
+  armors.remove_if([&](const auto_aim::Armor & a) { return a.color != filter_color; });
 
   // 优先选择靠近图像中心的装甲板
   armors.sort([](const Armor & a, const Armor & b) {

@@ -101,7 +101,7 @@ int main(int argc, char * argv[])
 
       //Eigen::Vector3d ypr = tools::eulers(solver.R_gimbal2world(), 2, 1, 0);
 
-      auto targets = tracker.track(armors, t);
+      auto targets = tracker.track(armors, t, gimbal_state.enemy_color);
 
       commandgener.push(targets, t, gimbal_state.bullet_speed, ypr);  // 发送给决策线程
 

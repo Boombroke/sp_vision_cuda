@@ -23,13 +23,12 @@ public:
 
   // 自瞄跟踪
   std::list<Target> track(
-    std::list<Armor> & armors, std::chrono::steady_clock::time_point t,
-    bool use_enemy_color = true);
+    std::list<Armor> & armors, std::chrono::steady_clock::time_point t, int enemy_color = -1);
     
   // 全向感知跟踪
   std::tuple<omniperception::DetectionResult, std::list<Target>> track(
     const std::vector<omniperception::DetectionResult> & detection_queue, std::list<Armor> & armors,
-    std::chrono::steady_clock::time_point t, bool use_enemy_color = true);
+    std::chrono::steady_clock::time_point t, int enemy_color = -1);
 
 private:
   Solver & solver_;

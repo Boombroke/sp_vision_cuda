@@ -175,6 +175,7 @@ void Gimbal::read_thread()
     state_.pitch_vel = rx_data_.pitch_vel;
     state_.bullet_speed = rx_data_.bullet_speed;
     state_.bullet_count = rx_data_.bullet_count;
+    state_.enemy_color = rx_data_.enemy_color;
 
     switch (rx_data_.mode) {
       case 0:

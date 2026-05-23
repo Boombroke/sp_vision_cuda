@@ -84,7 +84,7 @@ int main(int argc, char * argv[])
     auto armors = detector.detect(img);
 
     //跟踪目标
-    auto targets = tracker.track(armors, t);
+    auto targets = tracker.track(armors, t, gimbal_state.enemy_color);
 
     // 使用串口获取的子弹速度
     // 获取击打逻辑

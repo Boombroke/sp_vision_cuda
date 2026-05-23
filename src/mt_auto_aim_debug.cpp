@@ -85,7 +85,7 @@ int main(int argc, char * argv[])
     // 可选：ypr 直接用串口 — Eigen::Vector3d ypr = {gimbal_state.yaw, gimbal_state.pitch, 0};
     Eigen::Vector3d ypr = tools::eulers(solver.R_gimbal2world(), 2, 1, 0);
 
-    auto targets = tracker.track(armors, t);
+    auto targets = tracker.track(armors, t, gimbal_state.enemy_color);
 
     commandgener.push(targets, t, gimbal_state.bullet_speed, ypr);  // 发送给决策线程
 

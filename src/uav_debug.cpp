@@ -74,7 +74,7 @@ int main(int argc, char * argv[])
     auto armors = yolo.detect(img, frame_count++);
 
     auto tracker_start = std::chrono::steady_clock::now();
-    auto targets = tracker.track(armors, t);
+    auto targets = tracker.track(armors, t, gimbal_state.enemy_color);
 
     auto aimer_start = std::chrono::steady_clock::now();
     auto command = aimer.aim(targets, t, gimbal_state.bullet_speed);

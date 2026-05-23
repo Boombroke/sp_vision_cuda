@@ -118,8 +118,9 @@ int main(int argc, char * argv[])
     auto q = gimbal.q(t);//获取云台状态
 
     solver.set_R_gimbal2world(q);//设置云台世界坐标系
+    auto gs = gimbal.state();
     auto armors = yolo.detect(img);//识别装甲板 
-    auto targets = tracker.track(armors, t);//追踪  装甲板
+    auto targets = tracker.track(armors, t, gs.enemy_color);//追踪  装甲板
     // 添加目标到目标队列中
     if (!targets.empty())
       target_queue.push(targets.front());

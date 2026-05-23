@@ -33,7 +33,8 @@ public:
   Eigen::Vector2d delta_angle(
     const std::list<auto_aim::Armor> & armors, const std::string & camera);
 
-  bool armor_filter(std::list<auto_aim::Armor> & armors);
+  bool armor_filter(
+    std::list<auto_aim::Armor> & armors, int enemy_color = -1);
 
   void set_priority(std::list<auto_aim::Armor> & armors);
   //对队列中的每一个DetectionResult进行过滤，同时将DetectionResult排序
