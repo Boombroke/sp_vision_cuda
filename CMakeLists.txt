@@ -13,18 +13,36 @@ find_package(Eigen3 REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(nlohmann_json REQUIRED)
-# OpenVINO 与 TensorRT 在工程里不互斥，可同时编译进同一构建：
-#   - OpenVINO：始终参与（本行 find_package），供 yolov5 / yolov8 / yolo11 等。
-#   - TensorRT：仅当 BOF_WITH_INFER=ON 时额外加入 libinfer + yolov5_trt。
-# 运行时选后端：改 yaml 里 yolo_name（OpenVINO 系 vs yolov5_trt），无需二选一编译。
-# 若安装路径不同：cmake -DOpenVINO_DIR=.../runtime/cmake 或先 source OpenVINO setupvars.sh。
-set(OpenVINO_DIR "/opt/intel/openvino_2024.6.0/runtime/cmake/" CACHE PATH "OpenVINO CMake 包目录（含 OpenVINOConfig.cmake）")
-find_package(OpenVINO REQUIRED)
 
-# 可选：CUDA+TensorRT；须先于 tasks/auto_aim。另可 -DINFER_BUILD_VIDEO_TEST=ON 编 yolo_video_test
-option(BOF_WITH_INFER "额外编译 TensorRT infer 与 yolov5_trt（与 OpenVINO 可同时开启）" OFF)
+# 后端开关：
+#   - BOF_WITH_OPENVINO  : OpenVINO 后端（yolov5 / yolov8 / yolo11 + auto_buff）
+#       x86 默认 ON；aarch64（Jetson 等）OpenVINO 没有官方包，默认 OFF。
+#   - BOF_WITH_INFER     : TensorRT + CUDA 后端（yolov5_trt + libinfer）
+#       默认 OFF；Jetson 上请显式 -DBOF_WITH_INFER=ON。
+# 两者互不冲突，可同时启用。运行时由 yaml 的 yolo_name 选择具体后端。
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
+  set(_default_openvino OFF)
+else()
+  set(_default_openvino ON)
+endif()
+option(BOF_WITH_OPENVINO "编译 OpenVINO 后端（yolov5/v8/11 + auto_buff）；x86 默认 ON、aarch64 默认 OFF" ${_default_openvino})
+option(BOF_WITH_INFER    "编译 TensorRT 后端（yolov5_trt + libinfer，需要 CUDA）" OFF)
+
+if(BOF_WITH_OPENVINO)
+  set(OpenVINO_DIR "/opt/intel/openvino_2024.6.0/runtime/cmake/" CACHE PATH "OpenVINO CMake 包目录（含 OpenVINOConfig.cmake）")
+  find_package(OpenVINO REQUIRED)
+  message(STATUS "BOF: OpenVINO backend ENABLED")
+else()
+  message(STATUS "BOF: OpenVINO backend DISABLED (Jetson/aarch64 默认；用 -DBOF_WITH_OPENVINO=ON 强制开)")
+endif()
+
 if(BOF_WITH_INFER)
   add_subdirectory(infer)
+  message(STATUS "BOF: TensorRT backend ENABLED")
+endif()
+
+if(NOT BOF_WITH_OPENVINO AND NOT BOF_WITH_INFER)
+  message(FATAL_ERROR "至少要开一个推理后端：-DBOF_WITH_OPENVINO=ON 或 -DBOF_WITH_INFER=ON")
 endif()
 
 include_directories(${EIGEN3_INCLUDE_DIR})
@@ -36,36 +54,44 @@ include_directories(${PROJECT_SOURCE_DIR})
 add_subdirectory(tools)
 add_subdirectory(io)
 add_subdirectory(tasks/auto_aim)
-add_subdirectory(tasks/auto_buff)
+# auto_buff 的 yolo11_buff 直接调用 OpenVINO，无 TRT 等价实现；OpenVINO 关闭时跳过整个子目录。
+if(BOF_WITH_OPENVINO)
+  add_subdirectory(tasks/auto_buff)
+endif()
 add_subdirectory(tasks/omniperception)
 
 ####################src###################
-add_executable(standard src/standard.cpp)
-add_executable(mt_standard src/mt_standard.cpp)
-add_executable(standard_mpc src/standard_mpc.cpp)
-add_executable(auto_aim_debug_mpc src/auto_aim_debug_mpc.cpp)
-add_executable(mt_auto_aim_debug src/mt_auto_aim_debug.cpp)
-add_executable(auto_buff_debug src/auto_buff_debug.cpp)
-add_executable(auto_buff_debug_mpc src/auto_buff_debug_mpc.cpp)
-add_executable(uav src/uav.cpp)
+# 不依赖 auto_buff 的入口：OpenVINO/TRT 任一开启都可编
+add_executable(auto_aim_debug_aimer src/auto_aim_debug_aimer.cpp)
+add_executable(auto_aim_debug_hero_aimer src/auto_aim_debug_hero_aimer.cpp)
+target_link_libraries(auto_aim_debug_aimer ${OpenCV_LIBS} fmt::fmt yaml-cpp auto_aim tools io)
+target_link_libraries(auto_aim_debug_hero_aimer ${OpenCV_LIBS} fmt::fmt yaml-cpp auto_aim tools io)
+
 # uav_debug 直接调 YOLOV5_TRT，仅在 BOF_WITH_INFER=ON 时启用
 if(BOF_WITH_INFER)
   add_executable(uav_debug src/uav_debug.cpp)
   target_link_libraries(uav_debug ${OpenCV_LIBS} fmt::fmt yaml-cpp auto_aim tools io)
 endif()
-add_executable(auto_aim_debug_aimer src/auto_aim_debug_aimer.cpp)
-add_executable(auto_aim_debug_hero_aimer src/auto_aim_debug_hero_aimer.cpp)
-# 连接库
-target_link_libraries(standard ${OpenCV_LIBS} fmt::fmt yaml-cpp auto_aim auto_buff tools io)
-target_link_libraries(mt_standard ${OpenCV_LIBS} fmt::fmt yaml-cpp auto_aim auto_buff tools io)
-target_link_libraries(standard_mpc ${OpenCV_LIBS} fmt::fmt yaml-cpp auto_aim auto_buff tools io)
-target_link_libraries(auto_aim_debug_mpc ${OpenCV_LIBS} fmt::fmt yaml-cpp auto_aim auto_buff tools io)
-target_link_libraries(mt_auto_aim_debug ${OpenCV_LIBS} fmt::fmt yaml-cpp auto_aim auto_buff tools io)
-target_link_libraries(auto_buff_debug ${OpenCV_LIBS} fmt::fmt yaml-cpp auto_buff tools io ${CERES_LIBRARIES})
-target_link_libraries(auto_buff_debug_mpc ${OpenCV_LIBS} fmt::fmt yaml-cpp auto_buff tools io ${CERES_LIBRARIES})
-target_link_libraries(uav ${OpenCV_LIBS} fmt::fmt yaml-cpp auto_aim auto_buff tools io)
-target_link_libraries(auto_aim_debug_aimer ${OpenCV_LIBS} fmt::fmt yaml-cpp auto_aim tools io)
-target_link_libraries(auto_aim_debug_hero_aimer ${OpenCV_LIBS} fmt::fmt yaml-cpp auto_aim tools io)
+
+# 依赖 auto_buff（含 OpenVINO YOLO11_BUFF）的入口，仅在 OpenVINO 后端开启时编译
+if(BOF_WITH_OPENVINO)
+  add_executable(standard src/standard.cpp)
+  add_executable(mt_standard src/mt_standard.cpp)
+  add_executable(standard_mpc src/standard_mpc.cpp)
+  add_executable(auto_aim_debug_mpc src/auto_aim_debug_mpc.cpp)
+  add_executable(mt_auto_aim_debug src/mt_auto_aim_debug.cpp)
+  add_executable(auto_buff_debug src/auto_buff_debug.cpp)
+  add_executable(auto_buff_debug_mpc src/auto_buff_debug_mpc.cpp)
+  add_executable(uav src/uav.cpp)
+  target_link_libraries(standard ${OpenCV_LIBS} fmt::fmt yaml-cpp auto_aim auto_buff tools io)
+  target_link_libraries(mt_standard ${OpenCV_LIBS} fmt::fmt yaml-cpp auto_aim auto_buff tools io)
+  target_link_libraries(standard_mpc ${OpenCV_LIBS} fmt::fmt yaml-cpp auto_aim auto_buff tools io)
+  target_link_libraries(auto_aim_debug_mpc ${OpenCV_LIBS} fmt::fmt yaml-cpp auto_aim auto_buff tools io)
+  target_link_libraries(mt_auto_aim_debug ${OpenCV_LIBS} fmt::fmt yaml-cpp auto_aim auto_buff tools io)
+  target_link_libraries(auto_buff_debug ${OpenCV_LIBS} fmt::fmt yaml-cpp auto_buff tools io ${CERES_LIBRARIES})
+  target_link_libraries(auto_buff_debug_mpc ${OpenCV_LIBS} fmt::fmt yaml-cpp auto_buff tools io ${CERES_LIBRARIES})
+  target_link_libraries(uav ${OpenCV_LIBS} fmt::fmt yaml-cpp auto_aim auto_buff tools io)
+endif()
 
 ##################calibration################
 add_executable(capture calibration/capture.cpp)
@@ -82,20 +108,28 @@ target_link_libraries(split_video ${OpenCV_LIBS} fmt::fmt tools)
 
 ##################tests##################
 add_executable(auto_aim_test tests/auto_aim_test.cpp)
-add_executable(auto_buff_test tests/auto_buff_test.cpp)
-add_executable(camera_detect_test tests/camera_detect_test.cpp)
+if(BOF_WITH_OPENVINO)
+  add_executable(auto_buff_test tests/auto_buff_test.cpp)
+endif()
 add_executable(camera_test tests/camera_test.cpp)
 add_executable(camera_thread_test tests/camera_thread_test.cpp)
 add_executable(cboard_test tests/cboard_test.cpp)
 add_executable(fire_test tests/fire_test.cpp)
-add_executable(detector_video_test tests/detector_video_test.cpp)
 add_executable(gimbal_response_test tests/gimbal_response_test.cpp)
 add_executable(multi_usbcamera_test tests/multi_usbcamera_test.cpp)
 add_executable(usbcamera_detect_test tests/usbcamera_detect_test.cpp)
 add_executable(usbcamera_test tests/usbcamera_test.cpp)
 add_executable(handeye_test tests/handeye_test.cpp)
 add_executable(dm_test tests/dm_test.cpp)
-add_executable(minimum_vision_system tests/minimum_vision_system.cpp)
+# 以下 3 个测试用传统识别 detector / 多线程 OpenVINO 推理，仅 OpenVINO 后端可用
+if(BOF_WITH_OPENVINO)
+  add_executable(camera_detect_test tests/camera_detect_test.cpp)
+  add_executable(detector_video_test tests/detector_video_test.cpp)
+  add_executable(minimum_vision_system tests/minimum_vision_system.cpp)
+  target_link_libraries(camera_detect_test ${OpenCV_LIBS} fmt::fmt yaml-cpp tools auto_aim io)
+  target_link_libraries(detector_video_test ${OpenCV_LIBS} fmt::fmt yaml-cpp tools auto_aim)
+  target_link_libraries(minimum_vision_system ${OpenCV_LIBS} fmt::fmt yaml-cpp tools io auto_aim)
+endif()
 
 target_link_libraries(auto_aim_test ${OpenCV_LIBS} fmt::fmt yaml-cpp tools io auto_aim)
 
@@ -104,20 +138,19 @@ if(BOF_WITH_INFER)
   target_link_libraries(
     auto_aim_trt_test PRIVATE ${OpenCV_LIBS} fmt::fmt yaml-cpp tools io auto_aim infer)
 endif()
-target_link_libraries(auto_buff_test ${OpenCV_LIBS} fmt::fmt yaml-cpp auto_buff tools io)
-target_link_libraries(camera_detect_test ${OpenCV_LIBS} fmt::fmt yaml-cpp tools auto_aim io)
+if(BOF_WITH_OPENVINO)
+  target_link_libraries(auto_buff_test ${OpenCV_LIBS} fmt::fmt yaml-cpp auto_buff tools io)
+endif()
 target_link_libraries(camera_test ${OpenCV_LIBS} fmt::fmt tools io)
 target_link_libraries(camera_thread_test ${OpenCV_LIBS} fmt::fmt auto_aim tools io)
 target_link_libraries(cboard_test ${OpenCV_LIBS} fmt::fmt tools io)
 target_link_libraries(fire_test ${OpenCV_LIBS} fmt::fmt tools io)
-target_link_libraries(detector_video_test ${OpenCV_LIBS} fmt::fmt yaml-cpp tools auto_aim)
 target_link_libraries(gimbal_response_test ${OpenCV_LIBS} fmt::fmt yaml-cpp tools io)
 target_link_libraries(multi_usbcamera_test ${OpenCV_LIBS} fmt::fmt tools io)
 target_link_libraries(usbcamera_detect_test ${OpenCV_LIBS} fmt::fmt yaml-cpp tools io auto_aim)
 target_link_libraries(usbcamera_test ${OpenCV_LIBS} fmt::fmt yaml-cpp tools io)
 target_link_libraries(handeye_test ${OpenCV_LIBS} fmt::fmt yaml-cpp tools io auto_aim)
 target_link_libraries(dm_test ${OpenCV_LIBS} fmt::fmt yaml-cpp tools io)
-target_link_libraries(minimum_vision_system ${OpenCV_LIBS} fmt::fmt yaml-cpp tools io auto_aim)
 
 
 # 这些是后来加的吧

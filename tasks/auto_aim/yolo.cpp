@@ -3,12 +3,14 @@
 #include <stdexcept>
 #include <yaml-cpp/yaml.h>
 
+#if defined(BOF_WITH_OPENVINO)
 #include "yolos/yolo11.hpp"
 #include "yolos/yolov5.hpp"
+#include "yolos/yolov8.hpp"
+#endif
 #if defined(BOF_WITH_INFER)
 #include "yolos/yolov5_trt.hpp"
 #endif
-#include "yolos/yolov8.hpp"
 
 namespace auto_aim
 {
@@ -18,15 +20,27 @@ YOLO::YOLO(const std::string & config_path, bool debug)
   auto yolo_name = yaml["yolo_name"].as<std::string>();
 
   if (yolo_name == "yolov8") {
+#if defined(BOF_WITH_OPENVINO)
     yolo_ = std::make_unique<YOLOV8>(config_path, debug);
+#else
+    throw std::runtime_error("yolov8 requires CMake -DBOF_WITH_OPENVINO=ON.");
+#endif
   }
 
   else if (yolo_name == "yolo11") {
+#if defined(BOF_WITH_OPENVINO)
     yolo_ = std::make_unique<YOLO11>(config_path, debug);
+#else
+    throw std::runtime_error("yolo11 requires CMake -DBOF_WITH_OPENVINO=ON.");
+#endif
   }
 
   else if (yolo_name == "yolov5") {
+#if defined(BOF_WITH_OPENVINO)
     yolo_ = std::make_unique<YOLOV5>(config_path, debug);
+#else
+    throw std::runtime_error("yolov5 requires CMake -DBOF_WITH_OPENVINO=ON.");
+#endif
   }
 
   else if (yolo_name == "yolov5_trt") {
