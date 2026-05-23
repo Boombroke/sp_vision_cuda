@@ -5,9 +5,8 @@
 #include <chrono>
 #include <list>
 
-#include "io/cboard.hpp"
 #include "io/command.hpp"
-#include "target.hpp"
+#include "tasks/auto_aim/target.hpp"
 
 namespace auto_aim
 {
@@ -27,16 +26,13 @@ public:
     std::list<Target> targets, std::chrono::steady_clock::time_point timestamp, double bullet_speed,
     bool to_now = true);
 
-  io::Command aim(
-    std::list<Target> targets, std::chrono::steady_clock::time_point timestamp, double bullet_speed,
-    io::ShootMode shoot_mode, bool to_now = true);
-
 private:
   double yaw_offset_;
-  std::optional<double> left_yaw_offset_, right_yaw_offset_;
   double pitch_offset_;
   double comming_angle_;
   double leaving_angle_;
+  double outpost_coming_angle_;
+  double outpost_leaving_angle_;
   double lock_id_ = -1;
   double high_speed_delay_time_;
   double low_speed_delay_time_;
