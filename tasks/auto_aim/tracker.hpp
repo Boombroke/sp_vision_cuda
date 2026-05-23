@@ -6,9 +6,9 @@
 #include <list>
 #include <string>
 
-#include "armor.hpp"
+#include "tasks/auto_aim/armor.hpp"
 #include "solver.hpp"
-#include "target.hpp"
+#include "tasks/auto_aim/target.hpp"
 #include "tasks/omniperception/perceptron.hpp"
 #include "tools/thread_safe_queue.hpp"
 
@@ -39,10 +39,20 @@ private:
   int temp_lost_count_;
   int outpost_max_temp_lost_count_;
   int normal_temp_lost_count_;
+  double nis_thresh_default_;
+  double nis_thresh_outpost_;
+  double lost_timeout_;
   std::string state_, pre_state_;
   Target target_;
   std::chrono::steady_clock::time_point last_timestamp_;
   ArmorPriority omni_target_priority_;
+
+  // 前哨站 phase/sign(w) 跨 set_target 缓存：跟踪同一台前哨站时保留物理几何
+  bool outpost_cache_valid_ = false;
+  bool outpost_cache_phase_locked_ = false;
+  bool outpost_cache_w_sign_locked_ = false;
+  int outpost_cache_phase_ = 0;
+  double outpost_cache_w_ = 0.0;  // 锁定的 w 值（±2.51）
 
   void state_machine(bool found);
 

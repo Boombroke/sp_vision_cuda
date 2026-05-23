@@ -5,7 +5,7 @@
 #include <Eigen/Geometry>
 #include <opencv2/core/eigen.hpp>
 
-#include "armor.hpp"
+#include "tasks/auto_aim/armor.hpp"
 
 namespace auto_aim
 {
